@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leitor de Livros Markdown do GitHub</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+      /* Reset e estilos gerais */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --primary: #2c3e50;
+        --secondary: #3498db;
+        --light: #ecf0f1;
+        --dark: #34495e;
+        --accent: #e74c3c;
+        --highlight: rgba(52, 152, 219, 0.2);
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background-color: #f5f7fa;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Header */
+      header {
+        background-color: var(--primary);
+        color: white;
+        padding: 1rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+      }
+
+      .header-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.5rem;
+        font-weight: bold;
+      }
+
+      .logo svg {
+        width: 32px;
+        height: 32px;
+      }
+
+      .url-input-container {
+        flex: 1;
+        display: flex;
+        min-width: 250px;
+      }
+
+      input[type="text"] {
+        flex: 1;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 4px 0 0 4px;
+        font-size: 1rem;
+        outline: none;
+      }
+
+      button {
+        background-color: var(--secondary);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0 4px 4px 0;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: bold;
+        transition: background-color 0.3s;
+      }
+
+      button:hover {
+        background-color: #2980b9;
+      }
+
+      /* Layout principal */
+      .container {
+        display: flex;
+        flex: 1;
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+        padding: 0 1rem;
+        gap: 1rem;
+      }
+
+      /* Painel esquerdo (sumário) */
+      aside {
+        width: 300px;
+        background-color: white;
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        overflow-y: auto;
+        position: sticky;
+        top: 1rem;
+        max-height: calc(100vh - 100px);
+      }
+
+      .toc-header {
+        padding-bottom: 1rem;
+        border-bottom: 2px solid var(--light);
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .toc-header h2 {
+        color: var(--primary);
+        font-size: 1.25rem;
+      }
+
+      .toc-list {
+        list-style-type: none;
+      }
+
+      .toc-item {
+        margin-bottom: 0.5rem;
+        padding: 0.5rem;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        cursor: pointer;
+      }
+
+      .toc-item:hover {
+        background-color: var(--highlight);
+      }
+
+      .toc-item.active {
+        background-color: var(--highlight);
+        font-weight: bold;
+        border-left: 3px solid var(--secondary);
+      }
+
+      /* Painel direito (conteúdo) */
+      main {
+        flex: 1;
+        background-color: white;
+        border-radius: 8px;
+        padding: 2rem;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        overflow-y: auto;
+      }
+
+      .chapter-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--light);
+      }
+
+      .chapter-content {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .chapter-content h1 {
+        color: var(--primary);
+        margin: 1.5rem 0 1rem;
+      }
+
+      .chapter-content h2 {
+        color: var(--dark);
+        margin: 1.25rem 0 0.75rem;
+      }
+
+      .chapter-content p {
+        margin-bottom: 1rem;
+        text-align: justify;
+      }
+
+      .chapter-content pre {
+        background-color: #f8f8f8;
+        padding: 1rem;
+        border-radius: 4px;
+        overflow-x: auto;
+        margin: 1rem 0;
+      }
+
+      .chapter-content code {
+        font-family: "Courier New", monospace;
+        background-color: #f8f8f8;
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+
+      .progress-info {
+        background-color: var(--light);
+        padding: 0.75rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        text-align: center;
+      }
+
+      /* Footer */
+      footer {
+        background-color: var(--primary);
+        color: white;
+        text-align: center;
+        padding: 1rem;
+        margin-top: 1rem;
+      }
+
+      /* Responsividade */
+      @media (max-width: 768px) {
+        .container {
+          flex-direction: column;
+        }
+
+        aside {
+          width: 100%;
+          position: relative;
+          max-height: 300px;
+        }
+
+        main {
+          min-height: 500px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="header-content">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="white">
+            <path
+              d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"
+            />
+          </svg>
+          <span>GitHub Markdown Reader</span>
+        </div>
+        <div class="url-input-container">
+          <input
+            type="text"
+            id="bookUrl"
+            placeholder="Cole a URL do livro (ex: https://github.com/getify/You-Dont-Know-JS/blob/2nd-ed/get-started/README.md)"
+          />
+          <button id="loadBook">Carregar Livro</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="container">
+      <aside id="sidebar">
+        <div class="toc-header">
+          <h2>Sumário</h2>
+        </div>
+        <ul id="tocList" class="toc-list"></ul>
+      </aside>
+
+      <main id="content">
+        <div class="welcome-message">
+          <h1>Bem-vindo ao Leitor de Livros Markdown</h1>
+          <p>
+            Cole a URL de um arquivo Markdown raiz de um livro hospedado no
+            GitHub e clique em "Carregar Livro" para começar a leitura.
+          </p>
+          <p>
+            Este aplicativo salva automaticamente seu progresso em cada capítulo
+            usando o armazenamento local do navegador.
+          </p>
+
+          <h2>Exemplos para testar:</h2>
+          <ul>
+            <li>
+              You Don't Know JS Yet:
+              <code
+                >https://github.com/getify/You-Dont-Know-JS/blob/2nd-ed/get-started/README.md</code
+              >
+            </li>
+            <li>
+              Eloquent JavaScript:
+              <code
+                >https://github.com/marijnh/Eloquent-JavaScript/blob/master/contents.md</code
+              >
+            </li>
+          </ul>
+        </div>
+      </main>
+    </div>
+
+    <footer>
+      <p>
+        Leitor de Livros Markdown do GitHub &copy; 2023 - Todos os direitos
+        reservados
+      </p>
+    </footer>
+
+    <script>
+      // Elementos DOM
+      const bookUrlInput = document.getElementById("bookUrl");
+      const loadBookBtn = document.getElementById("loadBook");
+      const tocList = document.getElementById("tocList");
+      const contentArea = document.getElementById("content");
+
+      // Estado da aplicação
+      let currentBook = {
+        rootUrl: "",
+        rawRootUrl: "",
+        basePath: "",
+        toc: [],
+      };
+
+      // Função para converter URL do GitHub para URL raw
+      function convertToRawUrl(githubUrl) {
+        // Exemplo:
+        // Input: https://github.com/getify/You-Dont-Know-JS/blob/2nd-ed/get-started/README.md
+        // Output: https://raw.githubusercontent.com/getify/You-Dont-Know-JS/2nd-ed/get-started/README.md
+
+        // Remove partes desnecessárias da URL
+        const url = new URL(githubUrl);
+        if (url.hostname !== "github.com") {
+          throw new Error(
+            "URL inválida. Por favor, forneça uma URL do GitHub."
+          );
+        }
+
+        // Extrai partes do caminho
+        const pathParts = url.pathname.split("/").filter((part) => part);
+
+        // Verifica se a URL tem o formato correto
+        if (pathParts.length < 5 || pathParts[2] !== "blob") {
+          throw new Error(
+            "Formato de URL inválido. Deve ser uma URL de arquivo do GitHub."
+          );
+        }
+
+        // Reconstroi a URL raw
+        const user = pathParts[0];
+        const repo = pathParts[1];
+        const branch = pathParts[3];
+        const filePath = pathParts.slice(4).join("/");
+
+        return `https://raw.githubusercontent.com/${user}/${repo}/${branch}/${filePath}`;
+      }
+
+      // Função para extrair o caminho base de uma URL
+      function extractBasePath(url) {
+        // Remove o nome do arquivo para obter o caminho base
+        const lastSlashIndex = url.lastIndexOf("/");
+        return url.substring(0, lastSlashIndex + 1);
+      }
+
+      // Função para buscar conteúdo de uma URL
+      async function fetchContent(url) {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(
+              `Falha ao buscar o recurso: ${response.status} ${response.statusText}`
+            );
+          }
+          return await response.text();
+        } catch (error) {
+          console.error("Erro ao buscar conteúdo:", error);
+          showError(`Erro ao carregar o recurso: ${error.message}`);
+          return null;
+        }
+      }
+
+      // Função para analisar o sumário do Markdown
+      function parseToc(markdownContent) {
+        // Expressão regular para encontrar itens de lista com links
+        const tocRegex = /^\s*[-*]\s*\[([^\]]+)\]\(([^)]+)\)/gm;
+        const tocItems = [];
+
+        let match;
+        while ((match = tocRegex.exec(markdownContent)) !== null) {
+          tocItems.push({
+            title: match[1],
+            path: match[2],
+          });
+        }
+
+        return tocItems;
+      }
+
+      // Função para renderizar o sumário
+      function renderToc(tocItems) {
+        tocList.innerHTML = "";
+
+        if (tocItems.length === 0) {
+          tocList.innerHTML =
+            '<li class="toc-item">Nenhum capítulo encontrado</li>';
+          return;
+        }
+
+        tocItems.forEach((item, index) => {
+          const li = document.createElement("li");
+          li.className = "toc-item";
+          li.textContent = item.title;
+          li.dataset.path = item.path;
+
+          li.addEventListener("click", () => {
+            // Remove a classe 'active' de todos os itens
+            document.querySelectorAll(".toc-item").forEach((el) => {
+              el.classList.remove("active");
+            });
+
+            // Adiciona a classe 'active' ao item clicado
+            li.classList.add("active");
+
+            // Carrega o capítulo
+            loadChapter(item.path);
+          });
+
+          tocList.appendChild(li);
+        });
+      }
+
+      // Função para carregar um capítulo
+      async function loadChapter(chapterPath) {
+        try {
+          // Mostra um indicador de carregamento
+          contentArea.innerHTML =
+            '<div class="loading">Carregando capítulo...</div>';
+
+          // Constrói a URL completa do capítulo
+          const chapterUrl = `${currentBook.basePath}${chapterPath}`;
+
+          // Busca o conteúdo do capítulo
+          const markdownContent = await fetchContent(chapterUrl);
+          if (!markdownContent) return;
+
+          // Converte Markdown para HTML
+          const htmlContent = marked.parse(markdownContent);
+
+          // Renderiza o conteúdo
+          contentArea.innerHTML = `
+                    <div class="chapter-header">
+                        <h1>${
+                          document.querySelector(".toc-item.active").textContent
+                        }</h1>
+                    </div>
+                    <div class="chapter-content">${htmlContent}</div>
+                    <div class="progress-info">Seu progresso de leitura está sendo salvo automaticamente.</div>
+                `;
+
+          // Recupera a posição salva do scroll
+          restoreScrollPosition(chapterUrl);
+
+          // Configura o salvamento do scroll
+          setupScrollSaving(chapterUrl);
+        } catch (error) {
+          console.error("Erro ao carregar o capítulo:", error);
+          showError(`Erro ao carregar o capítulo: ${error.message}`);
+        }
+      }
+
+      // Função para restaurar a posição do scroll
+      function restoreScrollPosition(chapterUrl) {
+        // Gera uma chave única para este capítulo
+        const storageKey = `reading-progress-${btoa(chapterUrl)}`;
+
+        // Recupera a posição salva
+        const savedScrollPosition = localStorage.getItem(storageKey);
+
+        if (savedScrollPosition) {
+          // Aguarda o próximo ciclo de renderização para garantir que o conteúdo está visível
+          setTimeout(() => {
+            contentArea.scrollTop = parseInt(savedScrollPosition, 10);
+          }, 50);
+        }
+      }
+
+      // Função para configurar o salvamento da posição do scroll
+      function setupScrollSaving(chapterUrl) {
+        // Gera uma chave única para este capítulo
+        const storageKey = `reading-progress-${btoa(chapterUrl)}`;
+
+        // Debounce para evitar chamadas excessivas
+        let scrollTimeout;
+
+        contentArea.addEventListener("scroll", () => {
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(() => {
+            // Salva a posição atual do scroll
+            localStorage.setItem(storageKey, contentArea.scrollTop.toString());
+          }, 300);
+        });
+      }
+
+      // Função para mostrar mensagens de erro
+      function showError(message) {
+        contentArea.innerHTML = `
+                <div class="error-message">
+                    <h2>Ocorreu um erro</h2>
+                    <p>${message}</p>
+                    <p>Tente verificar a URL e recarregar o livro.</p>
+                </div>
+            `;
+      }
+
+      // Evento principal: carregar livro
+      loadBookBtn.addEventListener("click", async () => {
+        const githubUrl = bookUrlInput.value.trim();
+
+        if (!githubUrl) {
+          alert("Por favor, insira a URL do livro.");
+          return;
+        }
+
+        try {
+          // Converte a URL para formato raw
+          const rawUrl = convertToRawUrl(githubUrl);
+
+          // Atualiza o estado do livro
+          currentBook.rootUrl = githubUrl;
+          currentBook.rawRootUrl = rawUrl;
+          currentBook.basePath = extractBasePath(rawUrl);
+
+          // Busca o conteúdo do arquivo raiz
+          const markdownContent = await fetchContent(rawUrl);
+          if (!markdownContent) return;
+
+          // Analisa o sumário
+          currentBook.toc = parseToc(markdownContent);
+
+          // Renderiza o sumário
+          renderToc(currentBook.toc);
+
+          // Se houver capítulos, carrega o primeiro
+          if (currentBook.toc.length > 0) {
+            document.querySelector(".toc-item").classList.add("active");
+            loadChapter(currentBook.toc[0].path);
+          }
+        } catch (error) {
+          console.error("Erro ao carregar o livro:", error);
+          showError(`Erro ao carregar o livro: ${error.message}`);
+        }
+      });
+
+      // Evento para permitir carregar com Enter
+      bookUrlInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          loadBookBtn.click();
+        }
+      });
+    </script>
+  </body>
+</html>

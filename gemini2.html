@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leitor de Livros Avançado</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+      :root {
+        /* Light Theme (Default) */
+        --primary-bg: #ffffff;
+        --secondary-bg: #f7f7f7;
+        --text-color: #212529;
+        --border-color: #dee2e6;
+        --link-color: #007bff;
+        --link-hover-color: #0056b3;
+        --active-bg: #e6f2ff;
+        --icon-color: #495057;
+        --header-height: 60px;
+        --sidebar-width: 320px;
+        --content-max-width: 1400px;
+      }
+
+      /* Dark Theme */
+      body.dark-theme {
+        --primary-bg: #121212;
+        --secondary-bg: #1e1e1e;
+        --text-color: #e0e0e0;
+        --border-color: #343a40;
+        --link-color: #64b5f6;
+        --link-hover-color: #90caf9;
+        --active-bg: #2a3a4a;
+        --icon-color: #adb5bd;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        margin: 0;
+        color: var(--text-color);
+        background-color: var(--primary-bg);
+        transition: background-color 0.3s, color 0.3s;
+        overflow: hidden;
+      }
+
+      #app-wrapper {
+        display: flex;
+        height: 100vh;
+        max-width: 95%;
+      }
+
+      /* --- Sidebar / TOC Panel --- */
+      #toc-panel {
+        width: var(--sidebar-width);
+        flex-shrink: 0;
+        background-color: var(--secondary-bg);
+        border-right: 1px solid var(--border-color);
+        padding-top: var(--header-height);
+        display: flex;
+        flex-direction: column;
+        transition: margin-left 0.3s ease-in-out;
+      }
+
+      #toc-header {
+        padding: 10px 15px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      #toc-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+
+      #book-actions button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--icon-color);
+        padding: 5px;
+      }
+
+      #toc-scroll-area {
+        overflow-y: auto;
+        flex-grow: 1;
+        padding: 10px;
+      }
+
+      #toc-list li {
+        list-style: none;
+        margin-bottom: 4px;
+      }
+      #toc-list > li > a {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        text-decoration: none;
+        color: var(--link-color);
+        border-radius: 4px;
+        font-weight: 500;
+        transition: background-color 0.2s;
+      }
+      #toc-list > li > a:hover {
+        background-color: var(--active-bg);
+      }
+      #toc-list > li > a.active {
+        background-color: var(--active-bg);
+        font-weight: bold;
+      }
+
+      .chapter-read-icon {
+        font-size: 1.2em;
+        color: #28a745;
+      }
+      .reset-chapter-btn {
+        font-size: 0.8em;
+        display: none;
+      }
+      #toc-list > li > a:hover .reset-chapter-btn {
+        display: inline;
+      }
+
+      .in-chapter-toc {
+        list-style: none;
+        padding-left: 20px;
+        margin: 8px 0;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-in-out;
+      }
+      .in-chapter-toc.visible {
+        max-height: 1000px; /* Animação de abertura */
+      }
+      .in-chapter-toc a {
+        padding: 6px 10px;
+        font-size: 0.9em;
+        border-left: 2px solid var(--border-color);
+        display: block;
+        text-decoration: none;
+        color: var(--text-color);
+      }
+      .in-chapter-toc a.active {
+        border-left: 2px solid var(--link-color);
+        font-weight: bold;
+        color: var(--link-color);
+      }
+
+      /* --- Main Content Panel --- */
+      #main-panel {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        transition: width 0.3s ease-in-out;
+      }
+
+      #app-header {
+        display: flex;
+        align-items: center;
+        padding: 0 15px;
+        border-bottom: 1px solid var(--border-color);
+        background-color: var(--primary-bg);
+        height: var(--header-height);
+        flex-shrink: 0;
+      }
+
+      #sidebar-toggle {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.5rem;
+        color: var(--icon-color);
+        margin-right: 15px;
+      }
+      #url-input {
+        flex-grow: 1;
+        padding: 8px 12px;
+        font-size: 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background-color: var(--primary-bg);
+        color: var(--text-color);
+      }
+      #load-button {
+        padding: 8px 18px;
+        font-size: 1rem;
+        color: white;
+        background-color: var(--link-color);
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-left: 10px;
+      }
+
+      #content-panel {
+        flex-grow: 1;
+        overflow-y: scroll;
+        padding: 20px;
+      }
+
+      #content-wrapper {
+        max-width: var(--content-max-width);
+        margin: 0 auto;
+      }
+
+      /* Sidebar Collapsed State */
+      body.sidebar-collapsed #toc-panel {
+        margin-left: calc(-1 * var(--sidebar-width));
+      }
+
+      /* Home/Welcome Screen Styles */
+      #home-screen {
+        padding: 30px;
+      }
+      #home-screen h2 {
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 10px;
+      }
+      .book-history-list li {
+        margin-bottom: 15px;
+        list-style: none;
+      }
+      .book-history-list a {
+        font-size: 1.1rem;
+        cursor: pointer;
+      }
+      .clear-history-btn {
+        font-size: 0.8rem;
+        margin-left: 10px;
+        color: #dc3545;
+        cursor: pointer;
+      }
+
+      /* Markdown Content Styles */
+      #content-wrapper h1,
+      #content-wrapper h2,
+      #content-wrapper h3 {
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.3em;
+        margin-top: 1.5em;
+      }
+      #content-wrapper code {
+        background-color: var(--secondary-bg);
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+      }
+      #content-wrapper pre {
+        background-color: var(--secondary-bg);
+        padding: 16px;
+        border-radius: 4px;
+        overflow-x: auto;
+      }
+      #content-wrapper pre code {
+        background: none;
+        padding: 0;
+      }
+      #content-wrapper blockquote {
+        border-left: 4px solid var(--border-color);
+        padding-left: 16px;
+        color: #6c757d;
+        margin-left: 0;
+      }
+      #content-wrapper table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      #content-wrapper th,
+      #content-wrapper td {
+        border: 1px solid var(--border-color);
+        padding: 8px 12px;
+      }
+      #content-wrapper th {
+        background-color: var(--secondary-bg);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app-wrapper">
+      <aside id="toc-panel">
+        <div id="toc-header">
+          <h3 id="toc-title">Histórico</h3>
+          <div id="book-actions" style="display: none">
+            <button id="forget-book-btn" title="Esquecer este livro">🗑️</button>
+          </div>
+        </div>
+        <div id="toc-scroll-area">
+          <ul id="toc-list"></ul>
+        </div>
+      </aside>
+
+      <main id="main-panel">
+        <header id="app-header">
+          <button id="sidebar-toggle" title="Alternar sumário">☰</button>
+          <input
+            type="text"
+            id="url-input"
+            placeholder="Cole a URL do arquivo raiz do livro no GitHub..."
+          />
+          <button id="load-button">Carregar</button>
+        </header>
+
+        <div id="content-panel">
+          <div id="content-wrapper"></div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        // --- DOM ELEMENTS ---
+        const urlInput = document.getElementById("url-input");
+        const loadButton = document.getElementById("load-button");
+        const tocList = document.getElementById("toc-list");
+        const contentPanel = document.getElementById("content-panel");
+        const contentWrapper = document.getElementById("content-wrapper");
+        const sidebarToggle = document.getElementById("sidebar-toggle");
+        const tocPanel = document.getElementById("toc-panel");
+        const tocTitle = document.getElementById("toc-title");
+        const bookActions = document.getElementById("book-actions");
+        const forgetBookBtn = document.getElementById("forget-book-btn");
+
+        // --- APP STATE & HELPERS ---
+        let appState = {
+          currentBook: null, // { title, rootUrl }
+          chapters: [],
+          readChapters: new Set(),
+          currentChapterPath: null,
+        };
+        let scrollTimeout;
+        let intersectionObserver;
+
+        const STORAGE_KEYS = {
+          BOOKS: "githubBookReader_books",
+          readChapters: (rootUrl) => `read_chapters_${rootUrl}`,
+          scrollProgress: (rootUrl, chapterPath) =>
+            `reading-progress-${rootUrl}-${chapterPath}`,
+        };
+
+        const slugify = (text) =>
+          text
+            .toLowerCase()
+            .replace(/\s+/g, "-")
+            .replace(/[^\w-]+/g, "");
+
+        // --- THEME MANAGEMENT ---
+        const setupTheme = () => {
+          const darkThemeMq = window.matchMedia("(prefers-color-scheme: dark)");
+          const setTheme = (isDark) => {
+            document.body.classList.toggle("dark-theme", isDark);
+          };
+          setTheme(darkThemeMq.matches);
+          darkThemeMq.addEventListener("change", (e) => setTheme(e.matches));
+        };
+
+        // --- HISTORY & DATA MANAGEMENT ---
+        const getBooksHistory = () =>
+          JSON.parse(localStorage.getItem(STORAGE_KEYS.BOOKS) || "[]");
+        const saveBooksHistory = (books) =>
+          localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(books));
+
+        const saveBookToHistory = (book) => {
+          let books = getBooksHistory();
+          books = books.filter((b) => b.rootUrl !== book.rootUrl); // Remove old entry
+          books.unshift(book); // Add to the top
+          saveBooksHistory(books);
+        };
+
+        const forgetBook = (rootUrl) => {
+          let books = getBooksHistory().filter((b) => b.rootUrl !== rootUrl);
+          saveBooksHistory(books);
+          localStorage.removeItem(STORAGE_KEYS.readChapters(rootUrl));
+          // A bit slow, but robust: remove all related scroll progress keys
+          Object.keys(localStorage)
+            .filter((key) => key.startsWith(`reading-progress-${rootUrl}`))
+            .forEach((key) => localStorage.removeItem(key));
+
+          alert("Livro esquecido.");
+          renderHomeScreen();
+        };
+
+        const getReadChapters = (rootUrl) =>
+          new Set(
+            JSON.parse(
+              localStorage.getItem(STORAGE_KEYS.readChapters(rootUrl)) || "[]"
+            )
+          );
+        const saveReadChapters = () => {
+          if (!appState.currentBook) return;
+          localStorage.setItem(
+            STORAGE_KEYS.readChapters(appState.currentBook.rootUrl),
+            JSON.stringify([...appState.readChapters])
+          );
+        };
+
+        const resetChapterProgress = (chapterPath) => {
+          if (!appState.currentBook) return;
+          appState.readChapters.delete(chapterPath);
+          saveReadChapters();
+          localStorage.removeItem(
+            STORAGE_KEYS.scrollProgress(
+              appState.currentBook.rootUrl,
+              chapterPath
+            )
+          );
+          // Re-render TOC to show change
+          renderToc(appState.chapters);
+          // If this is the current chapter, reset view
+          if (appState.currentChapterPath === chapterPath) {
+            contentPanel.scrollTop = 0;
+          }
+        };
+
+        // --- CORE LOGIC ---
+        const convertToRawUrl = (githubUrl) => {
+          try {
+            const url = new URL(githubUrl);
+            if (
+              url.hostname !== "github.com" ||
+              !url.pathname.includes("/blob/")
+            )
+              return null;
+            const newPath = url.pathname.replace("/blob/", "/");
+            return `https://raw.githubusercontent.com${newPath}`;
+          } catch (e) {
+            return null;
+          }
+        };
+
+        const parseTocFromMarkdown = (markdown) => {
+          const chapters = [];
+          const tocRegex = /^\s*\*\s*\[([^\]]+)\]\(([^)]+)\)/gm;
+          let match;
+          while ((match = tocRegex.exec(markdown)) !== null) {
+            chapters.push({ title: match[1].trim(), path: match[2].trim() });
+          }
+          // Try to find a book title from the first H1
+          const titleMatch = markdown.match(/^#\s+(.*)/);
+          const bookTitle = titleMatch ? titleMatch[1] : "Livro sem Título";
+          return { chapters, bookTitle };
+        };
+
+        const loadBook = async (rootUrl) => {
+          contentWrapper.innerHTML = "<h2>Carregando livro...</h2>";
+          const bookBaseUrl = rootUrl.substring(0, rootUrl.lastIndexOf("/"));
+
+          try {
+            const response = await fetch(rootUrl);
+            if (!response.ok)
+              throw new Error(`HTTP error! status: ${response.status}`);
+            const markdown = await response.text();
+            const { chapters, bookTitle } = parseTocFromMarkdown(markdown);
+
+            appState.currentBook = { title: bookTitle, rootUrl };
+            appState.chapters = chapters;
+            appState.readChapters = getReadChapters(rootUrl);
+
+            saveBookToHistory(appState.currentBook);
+            renderToc(chapters);
+            contentWrapper.innerHTML =
+              "<h2>Selecione um capítulo para começar</h2>";
+          } catch (error) {
+            console.error("Failed to load book:", error);
+            contentWrapper.innerHTML = `<h2>Falha ao carregar livro</h2><p>${error.message}</p>`;
+          }
+        };
+
+        const loadChapter = async (chapterPath) => {
+          if (!appState.currentBook) return;
+
+          if (intersectionObserver) intersectionObserver.disconnect();
+
+          appState.currentChapterPath = chapterPath;
+          const chapterUrl = `${appState.currentBook.rootUrl.substring(
+            0,
+            appState.currentBook.rootUrl.lastIndexOf("/")
+          )}/${chapterPath}`;
+          contentWrapper.innerHTML = "<h2>Carregando capítulo...</h2>";
+          updateActiveChapterLink(chapterPath, true);
+
+          try {
+            const response = await fetch(chapterUrl);
+            if (!response.ok)
+              throw new Error(`HTTP error! status: ${response.status}`);
+            const markdown = await response.text();
+            const htmlContent = marked.parse(markdown);
+
+            // Create in-chapter TOC
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = htmlContent;
+            const headings = tempDiv.querySelectorAll("h1, h2, h3");
+            const subTocItems = [];
+            headings.forEach((heading) => {
+              const id = slugify(heading.textContent);
+              heading.id = id;
+              subTocItems.push({
+                id,
+                text: heading.textContent,
+                tagName: heading.tagName,
+              });
+            });
+
+            contentWrapper.innerHTML = tempDiv.innerHTML;
+            renderInChapterToc(chapterPath, subTocItems);
+
+            // Restore scroll and setup observer
+            restoreScrollPosition();
+            setupIntersectionObserver();
+          } catch (error) {
+            console.error("Failed to load chapter:", error);
+            contentWrapper.innerHTML = `<h2>Falha ao carregar capítulo</h2><p>${error.message}</p>`;
+          }
+        };
+
+        // --- RENDERING & UI UPDATES ---
+        const renderHomeScreen = () => {
+          appState.currentBook = null;
+          contentWrapper.innerHTML = `
+                <div id="home-screen">
+                    <h2>Bem-vindo!</h2>
+                    <p>Cole a URL de um livro do GitHub acima ou selecione um do seu histórico.</p>
+                    <h3>Histórico de Livros</h3>
+                    <ul class="book-history-list"></ul>
+                    <button class="clear-history-btn" id="clear-all-data-btn">Limpar todo o histórico</button>
+                </div>
+            `;
+          const historyList = document.querySelector(".book-history-list");
+          const books = getBooksHistory();
+          if (books.length === 0) {
+            historyList.innerHTML = "<li>Nenhum livro visitado ainda.</li>";
+          } else {
+            books.forEach((book) => {
+              const li = document.createElement("li");
+              li.innerHTML = `<a data-url="${book.rootUrl}">${book.title}</a>`;
+              historyList.appendChild(li);
+            });
+          }
+          tocTitle.textContent = "Histórico";
+          tocList.innerHTML = "";
+          bookActions.style.display = "none";
+        };
+
+        const renderToc = (chapters) => {
+          tocTitle.textContent = appState.currentBook.title;
+          bookActions.style.display = "flex";
+          tocList.innerHTML = "";
+          chapters.forEach((chapter) => {
+            const isRead = appState.readChapters.has(chapter.path);
+            const li = document.createElement("li");
+            li.innerHTML = `
+                    <a href="#" data-path="${chapter.path}">
+                        <span>${chapter.title}</span>
+                        <div>
+                           ${
+                             isRead
+                               ? '<span class="chapter-read-icon" title="Capítulo lido">✓</span>'
+                               : ""
+                           }
+                           <span class="reset-chapter-btn" title="Reiniciar progresso">↻</span>
+                        </div>
+                    </a>
+                    <ul class="in-chapter-toc" data-parent-path="${
+                      chapter.path
+                    }"></ul>
+                `;
+            li.querySelector(".reset-chapter-btn").onclick = (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              if (confirm("Deseja limpar o progresso deste capítulo?")) {
+                resetChapterProgress(chapter.path);
+              }
+            };
+            tocList.appendChild(li);
+          });
+        };
+
+        const renderInChapterToc = (parentPath, items) => {
+          const subTocContainer = tocList.querySelector(
+            `.in-chapter-toc[data-parent-path="${parentPath}"]`
+          );
+          if (!subTocContainer) return;
+          subTocContainer.innerHTML = items
+            .map(
+              (item) => `
+                <li><a href="#${item.id}" data-target-id="${
+                item.id
+              }" style="padding-left: ${
+                10 * (parseInt(item.tagName.substring(1)) - 1)
+              }px">${item.text}</a></li>
+            `
+            )
+            .join("");
+          subTocContainer.classList.add("visible");
+        };
+
+        const updateActiveChapterLink = (chapterPath, openSubToc) => {
+          document.querySelectorAll("#toc-list > li > a").forEach((link) => {
+            link.classList.toggle("active", link.dataset.path === chapterPath);
+          });
+          document.querySelectorAll(".in-chapter-toc").forEach((subToc) => {
+            const shouldBeVisible =
+              openSubToc && subToc.dataset.parentPath === chapterPath;
+            subToc.classList.toggle("visible", shouldBeVisible);
+          });
+        };
+
+        // --- SCROLL & INTERSECTION OBSERVER ---
+        const saveScrollPosition = () => {
+          if (!appState.currentBook || !appState.currentChapterPath) return;
+          const key = STORAGE_KEYS.scrollProgress(
+            appState.currentBook.rootUrl,
+            appState.currentChapterPath
+          );
+          localStorage.setItem(key, contentPanel.scrollTop);
+
+          // Check if chapter is "read"
+          const scrollThreshold =
+            contentPanel.scrollHeight - contentPanel.clientHeight - 50; // 50px buffer
+          if (
+            contentPanel.scrollTop >= scrollThreshold &&
+            !appState.readChapters.has(appState.currentChapterPath)
+          ) {
+            appState.readChapters.add(appState.currentChapterPath);
+            saveReadChapters();
+            renderToc(appState.chapters); // Re-render to show checkmark
+            updateActiveChapterLink(appState.currentChapterPath, true);
+          }
+        };
+
+        const restoreScrollPosition = () => {
+          if (!appState.currentBook || !appState.currentChapterPath) return;
+          const key = STORAGE_KEYS.scrollProgress(
+            appState.currentBook.rootUrl,
+            appState.currentChapterPath
+          );
+          const savedPosition = localStorage.getItem(key);
+          contentPanel.scrollTop = savedPosition
+            ? parseInt(savedPosition, 10)
+            : 0;
+        };
+
+        const setupIntersectionObserver = () => {
+          const headings = contentWrapper.querySelectorAll("h1, h2, h3");
+          if (headings.length === 0) return;
+
+          intersectionObserver = new IntersectionObserver(
+            (entries) => {
+              entries.forEach((entry) => {
+                const id = entry.target.getAttribute("id");
+                const link = document.querySelector(
+                  `.in-chapter-toc a[data-target-id="${id}"]`
+                );
+                if (link) {
+                  link.classList.toggle("active", entry.isIntersecting);
+                }
+              });
+            },
+            { rootMargin: "0px 0px -80% 0px" }
+          ); // Activate when heading is in the top 20% of the viewport
+
+          headings.forEach((h) => intersectionObserver.observe(h));
+        };
+
+        // --- EVENT HANDLERS ---
+        const handleLoadButtonClick = () => {
+          const url = urlInput.value.trim();
+          if (!url) return;
+          const rawUrl = convertToRawUrl(url);
+          if (!rawUrl) {
+            alert("URL inválida ou não suportada.");
+            return;
+          }
+          loadBook(rawUrl);
+        };
+
+        const handleTocClick = (e) => {
+          const link = e.target.closest("a");
+          if (!link) return;
+
+          // Handle main chapter clicks
+          const chapterPath = link.dataset.path;
+          if (chapterPath) {
+            e.preventDefault();
+            loadChapter(chapterPath);
+            return;
+          }
+
+          // Handle in-chapter clicks (smooth scroll)
+          const targetId = link.dataset.targetId;
+          if (targetId) {
+            e.preventDefault();
+            document
+              .getElementById(targetId)
+              ?.scrollIntoView({ behavior: "smooth" });
+          }
+        };
+
+        const handleHomeClick = (e) => {
+          if (e.target.tagName === "A" && e.target.dataset.url) {
+            e.preventDefault();
+            loadBook(e.target.dataset.url);
+          }
+          if (e.target.id === "clear-all-data-btn") {
+            if (
+              confirm(
+                "Tem certeza que deseja apagar TODOS os dados de livros e progresso? Essa ação é irreversível."
+              )
+            ) {
+              localStorage.clear();
+              renderHomeScreen();
+            }
+          }
+        };
+
+        // --- INITIALIZATION ---
+        setupTheme();
+        renderHomeScreen();
+
+        loadButton.addEventListener("click", handleLoadButtonClick);
+        sidebarToggle.addEventListener("click", () =>
+          document.body.classList.toggle("sidebar-collapsed")
+        );
+        tocList.addEventListener("click", handleTocClick);
+        contentPanel.addEventListener("scroll", () => {
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(saveScrollPosition, 150);
+        });
+        contentWrapper.addEventListener("click", handleHomeClick);
+        forgetBookBtn.addEventListener("click", () => {
+          if (
+            appState.currentBook &&
+            confirm(
+              `Tem certeza que deseja esquecer o livro "${appState.currentBook.title}"?`
+            )
+          ) {
+            forgetBook(appState.currentBook.rootUrl);
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

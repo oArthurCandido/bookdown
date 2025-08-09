@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Leitor de Livros Markdown - GitHub</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background-color: #f5f5f5;
+        color: #333;
+      }
+      header {
+        background: #2c3e50;
+        color: #fff;
+        padding: 0.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      header input {
+        flex: 1;
+        min-width: 200px;
+        padding: 0.4rem;
+        border: none;
+        border-radius: 4px;
+      }
+      header button {
+        padding: 0.4rem 0.8rem;
+        border: none;
+        background: #3498db;
+        color: #fff;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      header button:hover {
+        background: #2980b9;
+      }
+      .container {
+        display: flex;
+        height: calc(100vh - 60px);
+      }
+      aside {
+        width: 280px;
+        background: #ecf0f1;
+        overflow-y: auto;
+        border-right: 1px solid #ccc;
+        transition: transform 0.3s ease;
+      }
+      aside.hidden {
+        transform: translateX(-100%);
+      }
+      aside h2 {
+        margin: 0;
+        padding: 1rem;
+        background: #bdc3c7;
+        font-size: 1.1rem;
+      }
+      #toc {
+        padding-left: 1rem;
+        font-size: 0.9rem;
+      }
+      #toc a {
+        display: block;
+        padding: 0.2rem 0;
+        color: #34495e;
+        text-decoration: none;
+      }
+      #toc a:hover {
+        text-decoration: underline;
+      }
+      main {
+        flex: 1;
+        overflow-y: auto;
+        padding: 2rem;
+        max-width: 850px;
+        margin: 0 auto;
+        background: white;
+      }
+      .chapter-read {
+        color: green;
+        font-weight: bold;
+      }
+      .toggle-sidebar {
+        background: #27ae60;
+        margin-left: auto;
+      }
+      @media (max-width: 768px) {
+        .container {
+          flex-direction: column;
+        }
+        aside {
+          position: fixed;
+          top: 60px;
+          left: 0;
+          height: calc(100vh - 60px);
+          z-index: 10;
+          background: #ecf0f1;
+        }
+        main {
+          max-width: 100%;
+          padding: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <input
+        type="text"
+        id="bookUrl"
+        placeholder="URL do README.md no GitHub"
+      />
+      <button id="loadBook">Carregar Livro</button>
+      <button id="clearBookData">Limpar Livro</button>
+      <button id="clearAllData">Limpar Todos</button>
+      <button class="toggle-sidebar">📚</button>
+    </header>
+    <div class="container">
+      <aside id="sidebar">
+        <h2>Sumário</h2>
+        <ul id="summary"></ul>
+      </aside>
+      <main id="content"></main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+      const bookUrlInput = document.getElementById("bookUrl");
+      const loadBookBtn = document.getElementById("loadBook");
+      const summaryEl = document.getElementById("summary");
+      const contentEl = document.getElementById("content");
+      const sidebarEl = document.getElementById("sidebar");
+      const toggleSidebarBtn = document.querySelector(".toggle-sidebar");
+
+      let currentBookBase = "";
+      let currentBookUrl = "";
+      let chaptersRead = {};
+
+      function githubToRaw(url) {
+        return url
+          .replace("https://github.com/", "https://raw.githubusercontent.com/")
+          .replace("/blob/", "/");
+      }
+
+      function saveProgress(chapter, scroll) {
+        localStorage.setItem(`progress-${currentBookUrl}-${chapter}`, scroll);
+      }
+
+      function getProgress(chapter) {
+        return localStorage.getItem(`progress-${currentBookUrl}-${chapter}`);
+      }
+
+      function saveLastChapter(chapter) {
+        localStorage.setItem(`last-${currentBookUrl}`, chapter);
+      }
+
+      function getLastChapter() {
+        return localStorage.getItem(`last-${currentBookUrl}`);
+      }
+
+      function markChapterRead(chapter) {
+        chaptersRead[chapter] = true;
+        localStorage.setItem(
+          `read-${currentBookUrl}`,
+          JSON.stringify(chaptersRead)
+        );
+      }
+
+      function loadChaptersRead() {
+        const data = localStorage.getItem(`read-${currentBookUrl}`);
+        chaptersRead = data ? JSON.parse(data) : {};
+      }
+
+      async function loadBook(url) {
+        currentBookUrl = url;
+        const rawUrl = githubToRaw(url);
+        const baseParts = rawUrl.split("/");
+        baseParts.pop(); // remove README.md
+        currentBookBase = baseParts.join("/");
+
+        const md = await fetch(rawUrl).then((r) => r.text());
+        const tocItems = md.match(/^\s*\*\s*\[([^\]]+)\]\(([^)]+)\)/gm) || [];
+
+        summaryEl.innerHTML = "";
+        tocItems.forEach((item) => {
+          const match = item.match(/\[([^\]]+)\]\(([^)]+)\)/);
+          if (match) {
+            const li = document.createElement("li");
+            const a = document.createElement("a");
+            a.href = "#";
+            a.textContent = match[1];
+            a.dataset.chapter = match[2];
+            if (chaptersRead[match[2]]) {
+              a.classList.add("chapter-read");
+            }
+            a.addEventListener("click", (e) => {
+              e.preventDefault();
+              loadChapter(match[2], match[1]);
+            });
+            li.appendChild(a);
+            summaryEl.appendChild(li);
+          }
+        });
+
+        const last = getLastChapter();
+        if (last) {
+          loadChapter(last);
+        }
+      }
+
+      async function loadChapter(file, title) {
+        const url = `${currentBookBase}/${file}`;
+        const md = await fetch(url).then((r) => r.text());
+        const html = marked.parse(md);
+        contentEl.innerHTML = html;
+        contentEl.scrollTop = 0;
+
+        markChapterRead(file);
+        saveLastChapter(file);
+
+        // gerar TOC interno
+        const headings = contentEl.querySelectorAll("h1, h2, h3");
+        const tocDiv = document.createElement("div");
+        tocDiv.id = "toc";
+        headings.forEach((h) => {
+          const id = h.textContent
+            .trim()
+            .toLowerCase()
+            .replace(/[^\w]+/g, "-");
+          h.id = id;
+          const link = document.createElement("a");
+          link.textContent = h.textContent;
+          link.href = `#${id}`;
+          tocDiv.appendChild(link);
+        });
+
+        // adicionar TOC abaixo do capítulo ativo no sumário
+        const activeLi = [...summaryEl.querySelectorAll("a")].find(
+          (a) => a.dataset.chapter === file
+        )?.parentElement;
+        if (activeLi) {
+          // remover TOC antigo
+          summaryEl.querySelectorAll("#toc").forEach((el) => el.remove());
+          activeLi.appendChild(tocDiv);
+        }
+
+        const savedScroll = getProgress(file);
+        if (savedScroll) {
+          contentEl.scrollTop = savedScroll;
+        }
+
+        contentEl.onscroll = () => {
+          saveProgress(file, contentEl.scrollTop);
+        };
+      }
+
+      toggleSidebarBtn.addEventListener("click", () => {
+        sidebarEl.classList.toggle("hidden");
+      });
+
+      loadBookBtn.addEventListener("click", () => {
+        loadChaptersRead();
+        loadBook(bookUrlInput.value);
+      });
+
+      document.getElementById("clearBookData").addEventListener("click", () => {
+        Object.keys(localStorage).forEach((k) => {
+          if (k.includes(currentBookUrl)) {
+            localStorage.removeItem(k);
+          }
+        });
+        alert("Dados do livro apagados!");
+      });
+
+      document.getElementById("clearAllData").addEventListener("click", () => {
+        localStorage.clear();
+        alert("Todos os dados apagados!");
+      });
+    </script>
+  </body>
+</html>

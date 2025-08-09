@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Leitor de livros Markdown (GitHub)</title>
+    <style>
+      :root {
+        --bg: #0f1724;
+        --panel: #0b1220;
+        --muted: #94a3b8;
+        --accent: #60a5fa;
+        --surface: #071024;
+        --sidebar-width: 300px;
+        --gap: 16px;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+          Roboto, "Helvetica Neue", Arial;
+        background: linear-gradient(180deg, #071022 0%, #071224 40%);
+        color: #e6eef8;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+
+      header {
+        display: flex;
+        gap: var(--gap);
+        align-items: center;
+        padding: 12px;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.02),
+          transparent
+        );
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      .brand {
+        font-weight: 700;
+        color: var(--accent);
+        margin-right: 8px;
+      }
+      .input-row {
+        display: flex;
+        gap: 8px;
+        flex: 1;
+        align-items: center;
+      }
+      input[type="text"] {
+        flex: 1;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.02);
+        color: inherit;
+        outline: none;
+      }
+      button {
+        padding: 9px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: linear-gradient(180deg, var(--accent), #3b82f6);
+        color: #021025;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid rgba(255, 255, 255, 0.03);
+      }
+
+      .app {
+        display: flex;
+        flex: 1;
+        gap: 12px;
+        padding: 12px;
+        min-height: 0; /* important for scroll layout */
+      }
+
+      aside.toc {
+        width: var(--sidebar-width);
+        max-width: 40%;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 10px;
+        padding: 12px;
+        position: relative;
+        height: calc(100vh - 96px);
+        overflow: auto;
+        flex-shrink: 0;
+        border: 1px solid rgba(255, 255, 255, 0.03);
+      }
+      .toc h3 {
+        margin: 0 0 8px 0;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      ul.toc-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      ul.toc-list a {
+        display: block;
+        padding: 8px 10px;
+        border-radius: 6px;
+        text-decoration: none;
+        color: inherit;
+        font-size: 14px;
+        border: 1px solid transparent;
+      }
+      ul.toc-list a:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+      ul.toc-list a.active {
+        background: linear-gradient(
+          90deg,
+          rgba(96, 165, 250, 0.12),
+          rgba(59, 130, 246, 0.08)
+        );
+        border: 1px solid rgba(96, 165, 250, 0.18);
+        font-weight: 700;
+        color: var(--accent);
+      }
+      .meta {
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      main.reader {
+        flex: 1;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.01),
+          transparent
+        );
+        border-radius: 10px;
+        padding: 20px;
+        height: calc(100vh - 96px);
+        overflow: auto;
+        border: 1px solid rgba(255, 255, 255, 0.03);
+      }
+
+      /* markdown content style */
+      .content h1,
+      .content h2,
+      .content h3 {
+        margin-top: 1.2em;
+        margin-bottom: 0.6em;
+      }
+      .content p {
+        line-height: 1.6;
+        color: #dbeafe;
+      }
+      .content pre {
+        background: #021426;
+        padding: 12px;
+        border-radius: 8px;
+        overflow: auto;
+      }
+      .content code {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
+      .content img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 6px;
+      }
+      .content blockquote {
+        border-left: 3px solid rgba(96, 165, 250, 0.2);
+        padding-left: 12px;
+        color: var(--muted);
+      }
+      .content a {
+        color: var(--accent);
+        text-decoration: underline;
+      }
+      .hint {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      /* mobile adjustments */
+      @media (max-width: 800px) {
+        aside.toc {
+          position: fixed;
+          left: 0;
+          top: 64px;
+          bottom: 0;
+          z-index: 20;
+          transform: translateX(-110%);
+          transition: transform 0.25s ease;
+          width: 80%;
+          max-width: 320px;
+          box-shadow: 0 8px 30px rgba(2, 6, 23, 0.6);
+        }
+        aside.toc.open {
+          transform: translateX(0);
+        }
+        .app {
+          padding: 8px;
+        }
+        header .mobile-toggle {
+          display: inline-flex;
+        }
+      }
+      .mobile-toggle {
+        display: none;
+      }
+      .status-line {
+        font-size: 13px;
+        color: var(--muted);
+        margin-left: 8px;
+      }
+    </style>
+    <!-- Marked.js for markdown -> HTML -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  </head>
+  <body>
+    <header>
+      <div class="brand">MD Reader</div>
+      <div class="input-row">
+        <input
+          id="bookUrl"
+          type="text"
+          placeholder="Cole aqui a URL do arquivo README.md do livro no GitHub (ex: https://github.com/.../README.md)"
+        />
+        <button id="loadBtn">Carregar Livro</button>
+        <button id="toggleToc" class="secondary mobile-toggle">Sumário</button>
+        <div class="status-line" id="status"></div>
+      </div>
+    </header>
+
+    <div class="app" id="app">
+      <aside class="toc" id="toc">
+        <h3>Sumário</h3>
+        <div class="meta" id="metaInfo">
+          Cole a URL do README.md e clique em "Carregar Livro".
+        </div>
+        <ul class="toc-list" id="tocList"></ul>
+      </aside>
+
+      <main class="reader" id="reader">
+        <div id="content" class="content">
+          <p class="hint">Nenhum capítulo carregado.</p>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      (function () {
+        // Elements
+        const bookUrlInput = document.getElementById("bookUrl");
+        const loadBtn = document.getElementById("loadBtn");
+        const tocList = document.getElementById("tocList");
+        const toc = document.getElementById("toc");
+        const reader = document.getElementById("reader");
+        const contentEl = document.getElementById("content");
+        const statusEl = document.getElementById("status");
+        const metaInfo = document.getElementById("metaInfo");
+        const toggleTocBtn = document.getElementById("toggleToc");
+
+        // Constants & state
+        let book = {
+          originalUrl: null, // as pasted by user
+          rawRootUrl: null, // raw URL to README.md
+          rawBase: null, // base folder raw url (without filename)
+          tocItems: [], // {title, href}
+        };
+        let activeChapter = null; // {title, href, rawUrl}
+
+        // Load last used book url
+        const LAST_BOOK_KEY = "mdreader:lastBookUrl";
+        const saved = localStorage.getItem(LAST_BOOK_KEY);
+        if (saved) bookUrlInput.value = saved;
+
+        // Helpers
+        function setStatus(text, timeout = 3000) {
+          statusEl.textContent = text || "";
+          if (timeout) {
+            clearTimeout(setStatus._t);
+            setStatus._t = setTimeout(() => {
+              statusEl.textContent = "";
+            }, timeout);
+          }
+        }
+
+        function toRawGithubUrl(githubUrl) {
+          // Accept URLs in blob or raw form and convert them to raw.githubusercontent.com
+          // Examples:
+          // https://github.com/user/repo/blob/branch/path/to/file.md  -> https://raw.githubusercontent.com/user/repo/branch/path/to/file.md
+          // If already raw.githubusercontent.com return as-is
+          try {
+            const url = new URL(githubUrl.trim());
+            if (url.hostname === "raw.githubusercontent.com")
+              return githubUrl.trim();
+            if (url.hostname === "github.com") {
+              // path = /user/repo/blob/branch/path/to/file.md
+              const parts = url.pathname.split("/").filter(Boolean);
+              // minimal length check
+              // expect: [user, repo, 'blob', branch, ...pathParts]
+              if (parts.length >= 4 && parts[2] === "blob") {
+                const user = parts[0];
+                const repo = parts[1];
+                const branch = parts[3];
+                const filePath = parts.slice(4).join("/");
+                return `https://raw.githubusercontent.com/${user}/${repo}/${branch}/${filePath}`;
+              } else {
+                throw new Error("URL do GitHub deve conter /blob/branch/...");
+              }
+            } else {
+              throw new Error(
+                "Host não suportado. Use uma URL do GitHub (github.com) ou raw.githubusercontent.com"
+              );
+            }
+          } catch (err) {
+            throw new Error("URL inválida");
+          }
+        }
+
+        function getRawBase(rawFileUrl) {
+          // remove filename after last '/'
+          const idx = rawFileUrl.lastIndexOf("/");
+          if (idx === -1) return rawFileUrl;
+          return rawFileUrl.slice(0, idx + 1); // keep trailing slash
+        }
+
+        async function fetchText(url) {
+          const response = await fetch(url);
+          if (!response.ok)
+            throw new Error(`Erro ao buscar ${url} — ${response.status}`);
+          return await response.text();
+        }
+
+        function parseTocFromMarkdown(md) {
+          // find markdown link list items:
+          // lines like: * [Title](path/to/ch1.md)
+          // or - [Title](path)
+          // use regex global
+          const regex =
+            /(?:^[\s>*-]*)(?:[\*\-\+]\s*)?\[([^\]]+)\]\(([^)]+)\)/gm;
+          const items = [];
+          let m;
+          while ((m = regex.exec(md)) !== null) {
+            const title = m[1].trim();
+            const href = m[2].trim();
+            // heuristics: ignore external links (starting with http) unless they point to github raw or blob
+            items.push({ title, href });
+          }
+          return items;
+        }
+
+        function buildChapterRawUrl(baseRaw, chapterHref) {
+          // If chapterHref is absolute (starts with http(s) or raw.githubusercontent.com), try to convert.
+          try {
+            const u = new URL(chapterHref, baseRaw);
+            // if it's a github.com blob link, convert to raw
+            if (u.hostname === "github.com") return toRawGithubUrl(u.href);
+            return u.href;
+          } catch (e) {
+            // fallback: concatenate
+            return baseRaw + chapterHref;
+          }
+        }
+
+        function makeStorageKey(bookUrl, chapterFilename) {
+          return (
+            "reading-progress-" +
+            encodeURIComponent(bookUrl) +
+            "--" +
+            encodeURIComponent(chapterFilename)
+          );
+        }
+
+        // debounce helper
+        function debounce(fn, wait = 150) {
+          let t;
+          return function (...args) {
+            clearTimeout(t);
+            t = setTimeout(() => fn.apply(this, args), wait);
+          };
+        }
+
+        // Render TOC
+        function renderToc(items) {
+          tocList.innerHTML = "";
+          if (!items.length) {
+            tocList.innerHTML =
+              '<li class="hint" style="padding:8px;color:var(--muted)">Nenhum link encontrado no arquivo. Certifique-se que o README.md contém uma lista com links para capítulos.</li>';
+            return;
+          }
+          items.forEach((it, idx) => {
+            const li = document.createElement("li");
+            const a = document.createElement("a");
+            a.href = "#";
+            a.dataset.index = idx;
+            a.textContent = it.title;
+            a.title = it.href;
+            a.addEventListener("click", (ev) => {
+              ev.preventDefault();
+              openChapterByIndex(idx);
+              // on mobile close toc
+              if (window.innerWidth <= 800) toc.classList.remove("open");
+            });
+            li.appendChild(a);
+            tocList.appendChild(li);
+          });
+        }
+
+        function highlightActive(index) {
+          const links = tocList.querySelectorAll("a");
+          links.forEach((a) => a.classList.remove("active"));
+          const a = tocList.querySelector(`a[data-index="${index}"]`);
+          if (a) a.classList.add("active");
+        }
+
+        async function loadBookFromInput() {
+          const val = bookUrlInput.value.trim();
+          if (!val) {
+            setStatus("Cole a URL do README.md do GitHub.");
+            return;
+          }
+          setStatus("Convertendo URL e buscando arquivo...");
+          try {
+            const raw = toRawGithubUrl(val);
+            book.originalUrl = val;
+            book.rawRootUrl = raw;
+            book.rawBase = getRawBase(raw);
+            // save last used
+            localStorage.setItem(LAST_BOOK_KEY, val);
+
+            const md = await fetchText(raw);
+            const tocItems = parseTocFromMarkdown(md);
+            book.tocItems = tocItems;
+            renderToc(tocItems);
+            metaInfo.textContent = `Livro carregado: ${extractBookMetaFromRaw(
+              raw
+            )}`;
+            setStatus(
+              `Sumário com ${tocItems.length} itens carregado. Clique no capítulo para abrir.`
+            );
+          } catch (err) {
+            console.error(err);
+            setStatus(err.message || "Erro ao carregar o livro.");
+            metaInfo.textContent = "Erro ao carregar o livro. Verifique a URL.";
+            tocList.innerHTML = "";
+          }
+        }
+
+        function extractBookMetaFromRaw(rawUrl) {
+          // try to extract user/repo/path
+          try {
+            const u = new URL(rawUrl);
+            // raw.githubusercontent.com/user/repo/branch/path...
+            const parts = u.pathname.split("/").filter(Boolean);
+            if (
+              u.hostname === "raw.githubusercontent.com" &&
+              parts.length >= 3
+            ) {
+              return parts.slice(0, 3).join("/") + " ...";
+            }
+            return u.host + u.pathname;
+          } catch (e) {
+            return rawUrl;
+          }
+        }
+
+        async function openChapterByIndex(index) {
+          const it = book.tocItems[index];
+          if (!it) return;
+          highlightActive(index);
+
+          const rawUrl = buildChapterRawUrl(book.rawBase, it.href);
+          activeChapter = {
+            index,
+            title: it.title,
+            href: it.href,
+            rawUrl,
+          };
+          await loadAndRenderChapter(activeChapter);
+        }
+
+        async function loadAndRenderChapter(chapter) {
+          setStatus("Buscando capítulo...");
+          try {
+            const md = await fetchText(chapter.rawUrl);
+            // use marked to convert
+            const html = marked.parse(md);
+            contentEl.innerHTML = html;
+            // after rendering, restore scroll position if exists
+            const key = makeStorageKey(book.originalUrl, chapter.href);
+            const saved = localStorage.getItem(key);
+            // small timeout to allow images/async layout to settle
+            requestAnimationFrame(() => {
+              if (saved) {
+                // ensure it's a number
+                const val = parseInt(saved, 10);
+                if (!isNaN(val)) reader.scrollTop = val;
+              } else {
+                reader.scrollTop = 0;
+              }
+            });
+            setStatus(`Capítulo: ${chapter.title}`);
+            // attach link intercepts for relative markdown links to .md files
+            attachContentLinkHandlers();
+          } catch (err) {
+            console.error(err);
+            setStatus("Erro ao carregar capítulo.");
+          }
+        }
+
+        // Save scrollTop on reader scroll for active chapter
+        const saveScrollPos = debounce(() => {
+          if (!activeChapter || !book.originalUrl) return;
+          const key = makeStorageKey(book.originalUrl, activeChapter.href);
+          localStorage.setItem(key, String(reader.scrollTop));
+        }, 150);
+
+        reader.addEventListener("scroll", saveScrollPos);
+
+        // Toggle toc (mobile)
+        toggleTocBtn.addEventListener("click", () => {
+          toc.classList.toggle("open");
+        });
+
+        // Intercept clicks in content: if anchor points to a markdown (.md) file or to a github blob link, open in-app
+        function attachContentLinkHandlers() {
+          const anchors = contentEl.querySelectorAll("a");
+          anchors.forEach((a) => {
+            const href = a.getAttribute("href") || "";
+            if (!href) return;
+            // if href looks like markdown file or relative path, override
+            const lower = href.toLowerCase();
+            if (
+              lower.endsWith(".md") ||
+              href.includes("github.com") ||
+              href.includes("raw.githubusercontent.com")
+            ) {
+              a.addEventListener("click", (ev) => {
+                ev.preventDefault();
+                // try to build full url relative to book.rawBase when possible
+                try {
+                  const raw = buildChapterRawUrl(book.rawBase, href);
+                  // find if our toc already contains that href; if so open by index; else load directly
+                  const foundIndex = book.tocItems.findIndex(
+                    (i) =>
+                      i.href === href ||
+                      buildChapterRawUrl(book.rawBase, i.href) === raw
+                  );
+                  if (foundIndex !== -1) {
+                    openChapterByIndex(foundIndex);
+                  } else {
+                    // load as a transient chapter (not in toc)
+                    activeChapter = {
+                      index: null,
+                      title: href,
+                      href,
+                      rawUrl: raw,
+                    };
+                    loadAndRenderChapter(activeChapter);
+                  }
+                } catch (e) {
+                  // fallback: open in new tab
+                  window.open(href, "_blank");
+                }
+              });
+            } else if (href.startsWith("#")) {
+              // in-page anchors, allow default
+            } else {
+              // external link: open new tab
+              a.setAttribute("target", "_blank");
+              a.setAttribute("rel", "noopener noreferrer");
+            }
+          });
+        }
+
+        // Event handlers
+        loadBtn.addEventListener("click", async () => {
+          await loadBookFromInput();
+        });
+
+        // allow pressing Enter inside input to load
+        bookUrlInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") loadBtn.click();
+        });
+
+        // When user navigates (back/forward), do nothing special - could be extended
+        // UX: prefill input if last used
+        // Optionally auto-load if the pasted URL is already present (uncomment if desired)
+        // if (bookUrlInput.value) loadBtn.click();
+
+        // Clean-up: save scroll on unload
+        window.addEventListener("beforeunload", () => {
+          if (!activeChapter || !book.originalUrl) return;
+          const key = makeStorageKey(book.originalUrl, activeChapter.href);
+          localStorage.setItem(key, String(reader.scrollTop));
+        });
+
+        // small improvements: keyboard navigation for next/prev (n / p)
+        window.addEventListener("keydown", (e) => {
+          if (!book.tocItems || book.tocItems.length === 0) return;
+          if (e.key === "n" && activeChapter && activeChapter.index !== null) {
+            const next = Math.min(
+              book.tocItems.length - 1,
+              activeChapter.index + 1
+            );
+            openChapterByIndex(next);
+          } else if (
+            e.key === "p" &&
+            activeChapter &&
+            activeChapter.index !== null
+          ) {
+            const prev = Math.max(0, activeChapter.index - 1);
+            openChapterByIndex(prev);
+          }
+        });
+
+        // Expose for debugging (optional)
+        window.MDReader = {
+          toRawGithubUrl,
+          parseTocFromMarkdown,
+          buildChapterRawUrl,
+        };
+      })();
+    </script>
+  </body>
+</html>

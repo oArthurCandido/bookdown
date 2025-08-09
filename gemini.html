@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leitor de Livros do GitHub</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+      :root {
+        --primary-bg: #ffffff;
+        --secondary-bg: #f7f7f7;
+        --border-color: #e0e0e0;
+        --text-color: #333333;
+        --link-color: #007bff;
+        --active-link-bg: #e6f2ff;
+        --header-height: 70px;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        margin: 0;
+        color: var(--text-color);
+        background-color: var(--primary-bg);
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+
+      #app-header {
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--border-color);
+        background-color: var(--primary-bg);
+        height: var(--header-height);
+        box-sizing: border-box;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+      }
+
+      #url-input {
+        flex-grow: 1;
+        padding: 10px 12px;
+        font-size: 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        margin-right: 10px;
+      }
+
+      #load-button {
+        padding: 10px 20px;
+        font-size: 16px;
+        font-weight: bold;
+        color: white;
+        background-color: var(--link-color);
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      #load-button:hover {
+        background-color: #0056b3;
+      }
+
+      #app-container {
+        display: flex;
+        flex-grow: 1;
+        margin-top: var(--header-height);
+      }
+
+      #toc-panel {
+        width: 300px;
+        flex-shrink: 0;
+        background-color: var(--secondary-bg);
+        border-right: 1px solid var(--border-color);
+        padding: 20px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        position: fixed;
+        top: var(--header-height);
+        left: 0;
+        height: calc(100vh - var(--header-height));
+      }
+
+      #toc-panel h3 {
+        margin-top: 0;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 10px;
+      }
+
+      #toc-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      #toc-list a {
+        display: block;
+        padding: 10px 15px;
+        text-decoration: none;
+        color: var(--link-color);
+        border-radius: 4px;
+        transition: background-color 0.2s;
+      }
+
+      #toc-list a:hover {
+        background-color: #e9ecef;
+      }
+
+      #toc-list a.active {
+        background-color: var(--active-link-bg);
+        font-weight: bold;
+        color: #0056b3;
+      }
+
+      #content-panel {
+        flex-grow: 1;
+        padding: 20px 40px;
+        overflow-y: scroll;
+        margin-left: 320px; /* Width + padding */
+        height: calc(100vh - var(--header-height));
+      }
+
+      /* Estilos para o conteúdo Markdown renderizado */
+      #content-panel h1,
+      #content-panel h2,
+      #content-panel h3 {
+        border-bottom: 1px solid #eee;
+        padding-bottom: 0.3em;
+      }
+      #content-panel code {
+        background-color: #f0f0f0;
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
+          monospace;
+      }
+      #content-panel pre {
+        background-color: #f0f0f0;
+        padding: 16px;
+        border-radius: 4px;
+        overflow-x: auto;
+      }
+      #content-panel pre code {
+        background: none;
+        padding: 0;
+      }
+      #content-panel blockquote {
+        border-left: 4px solid #ccc;
+        padding-left: 16px;
+        color: #666;
+        margin-left: 0;
+      }
+
+      #loader {
+        text-align: center;
+        padding: 40px;
+        font-size: 18px;
+      }
+
+      /* Responsividade */
+      @media (max-width: 768px) {
+        #app-container {
+          flex-direction: column;
+        }
+        #toc-panel {
+          position: static;
+          width: 100%;
+          height: auto;
+          max-height: 40vh; /* Altura máxima para o sumário em telas pequenas */
+          border-right: none;
+          border-bottom: 1px solid var(--border-color);
+        }
+        #content-panel {
+          margin-left: 0;
+          height: auto;
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header id="app-header">
+      <input
+        type="text"
+        id="url-input"
+        placeholder="Cole a URL do arquivo Markdown raiz do GitHub aqui..."
+      />
+      <button id="load-button">Carregar Livro</button>
+    </header>
+
+    <div id="app-container">
+      <aside id="toc-panel">
+        <h3>Sumário</h3>
+        <ul id="toc-list"></ul>
+      </aside>
+
+      <main id="content-panel">
+        <div id="welcome-message">
+          <h2>Bem-vindo ao Leitor de Livros do GitHub!</h2>
+          <p>
+            Para começar, cole a URL de um arquivo Markdown de um repositório do
+            GitHub (como um <code>README.md</code> que contenha o sumário) no
+            campo acima e clique em "Carregar Livro".
+          </p>
+          <p>
+            <strong>Exemplo de URL:</strong><br /><code
+              >https://github.com/getify/You-Dont-Know-JS/blob/2nd-ed/get-started/README.md</code
+            >
+          </p>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        // --- Seletores de Elementos do DOM ---
+        const urlInput = document.getElementById("url-input");
+        const loadButton = document.getElementById("load-button");
+        const tocList = document.getElementById("toc-list");
+        const contentPanel = document.getElementById("content-panel");
+
+        // --- Estado da Aplicação ---
+        let bookBaseUrl = "";
+        let rootFileUrl = "";
+        let currentChapterPath = "";
+        let scrollTimeout;
+
+        /**
+         * Converte uma URL do GitHub (visualização normal) para a URL de conteúdo bruto (raw).
+         * @param {string} githubUrl A URL do GitHub.
+         * @returns {string|null} A URL de conteúdo bruto ou null se a URL for inválida.
+         */
+        const convertToRawUrl = (githubUrl) => {
+          try {
+            const url = new URL(githubUrl);
+            if (url.hostname !== "github.com") return null;
+
+            const path = url.pathname;
+            const newPath = path.replace("/blob/", "/");
+
+            return `https://raw.githubusercontent.com${newPath}`;
+          } catch (error) {
+            console.error("URL inválida:", error);
+            return null;
+          }
+        };
+
+        /**
+         * Extrai o sumário (Table of Contents - TOC) de um conteúdo Markdown.
+         * O padrão esperado é uma lista de links: * [Título](caminho/para/arquivo.md)
+         * @param {string} markdownContent O conteúdo do arquivo Markdown.
+         * @returns {Array<{title: string, path: string}>} Uma lista de objetos de capítulo.
+         */
+        const parseToc = (markdownContent) => {
+          const chapters = [];
+          // Regex para encontrar links em listas Markdown: * [texto](link)
+          const tocRegex = /^\s*\*\s*\[([^\]]+)\]\(([^)]+)\)/gm;
+          let match;
+
+          while ((match = tocRegex.exec(markdownContent)) !== null) {
+            chapters.push({
+              title: match[1].trim(),
+              path: match[2].trim(),
+            });
+          }
+          return chapters;
+        };
+
+        /**
+         * Renderiza o sumário no painel esquerdo.
+         * @param {Array<{title: string, path: string}>} chapters A lista de capítulos.
+         */
+        const renderToc = (chapters) => {
+          tocList.innerHTML = ""; // Limpa o sumário anterior
+          if (chapters.length === 0) {
+            tocList.innerHTML =
+              "<li>Nenhum capítulo encontrado no sumário.</li>";
+            return;
+          }
+          chapters.forEach((chapter) => {
+            const li = document.createElement("li");
+            const a = document.createElement("a");
+            a.href = "#";
+            a.textContent = chapter.title;
+            a.dataset.path = chapter.path; // Armazena o caminho do arquivo
+            li.appendChild(a);
+            tocList.appendChild(li);
+          });
+        };
+
+        /**
+         * Carrega e exibe o conteúdo de um capítulo.
+         * @param {string} chapterPath O caminho relativo do arquivo do capítulo.
+         */
+        const loadChapter = async (chapterPath) => {
+          if (!bookBaseUrl) return;
+
+          currentChapterPath = chapterPath;
+          const chapterUrl = `${bookBaseUrl}/${chapterPath}`;
+
+          showLoader();
+          updateActiveChapterLink(chapterPath);
+
+          try {
+            const response = await fetch(chapterUrl);
+            if (!response.ok)
+              throw new Error(
+                `Erro ao buscar capítulo: ${response.statusText}`
+              );
+
+            const markdown = await response.text();
+            // Converte Markdown para HTML usando a lib Marked.js
+            contentPanel.innerHTML = marked.parse(markdown);
+
+            restoreScrollPosition();
+          } catch (error) {
+            contentPanel.innerHTML = `<p>Não foi possível carregar o capítulo. Verifique o console para mais detalhes.</p><p><em>${error.message}</em></p>`;
+            console.error(error);
+          }
+        };
+
+        /**
+         * Atualiza o destaque visual do capítulo ativo no sumário.
+         * @param {string} chapterPath O caminho do capítulo ativo.
+         */
+        const updateActiveChapterLink = (chapterPath) => {
+          document.querySelectorAll("#toc-list a").forEach((link) => {
+            if (link.dataset.path === chapterPath) {
+              link.classList.add("active");
+            } else {
+              link.classList.remove("active");
+            }
+          });
+        };
+
+        /**
+         * Exibe uma mensagem de carregamento no painel de conteúdo.
+         */
+        const showLoader = () => {
+          contentPanel.innerHTML =
+            '<div id="loader">Carregando conteúdo...</div>';
+        };
+
+        // --- Funcionalidade de Persistência de Leitura (localStorage) ---
+
+        /**
+         * Gera uma chave única para o localStorage baseada no livro e capítulo.
+         * @returns {string} A chave para o localStorage.
+         */
+        const getStorageKey = () => {
+          if (!rootFileUrl || !currentChapterPath) return null;
+          return `reading-progress-${rootFileUrl}-${currentChapterPath}`;
+        };
+
+        /**
+         * Salva a posição de rolagem atual no localStorage.
+         */
+        const saveScrollPosition = () => {
+          const key = getStorageKey();
+          if (!key) return;
+          localStorage.setItem(key, contentPanel.scrollTop);
+        };
+
+        /**
+         * Restaura a posição de rolagem a partir do localStorage.
+         */
+        const restoreScrollPosition = () => {
+          const key = getStorageKey();
+          if (!key) return;
+
+          const savedPosition = localStorage.getItem(key);
+          if (savedPosition) {
+            // Usamos um pequeno timeout para garantir que o DOM foi renderizado antes de rolar.
+            setTimeout(() => {
+              contentPanel.scrollTop = parseInt(savedPosition, 10);
+            }, 0);
+          } else {
+            contentPanel.scrollTop = 0; // Vai para o topo se não houver progresso salvo
+          }
+        };
+
+        // --- Manipuladores de Eventos (Event Handlers) ---
+
+        /**
+         * Handler principal para carregar um novo livro.
+         */
+        const handleLoadBook = async () => {
+          const url = urlInput.value.trim();
+          if (!url) {
+            alert("Por favor, insira uma URL.");
+            return;
+          }
+
+          rootFileUrl = convertToRawUrl(url);
+          if (!rootFileUrl) {
+            alert("URL do GitHub inválida ou não suportada.");
+            return;
+          }
+
+          // A URL base é o diretório que contém o arquivo raiz
+          bookBaseUrl = rootFileUrl.substring(0, rootFileUrl.lastIndexOf("/"));
+
+          showLoader();
+          tocList.innerHTML = "<li>Carregando sumário...</li>";
+
+          try {
+            const response = await fetch(rootFileUrl);
+            if (!response.ok)
+              throw new Error(
+                `Erro ao buscar arquivo raiz: ${response.statusText}`
+              );
+
+            const markdown = await response.text();
+            const chapters = parseToc(markdown);
+
+            renderToc(chapters);
+            contentPanel.innerHTML =
+              "<p>Selecione um capítulo no sumário para começar a ler.</p>";
+          } catch (error) {
+            contentPanel.innerHTML = `<p>Falha ao carregar o livro. Verifique se a URL está correta e se o arquivo contém um sumário no formato esperado.</p><p><em>${error.message}</em></p>`;
+            tocList.innerHTML = "";
+            console.error(error);
+          }
+        };
+
+        /**
+         * Handler para cliques no sumário (usando delegação de eventos).
+         * @param {Event} event O objeto do evento de clique.
+         */
+        const handleTocClick = (event) => {
+          if (event.target.tagName === "A") {
+            event.preventDefault();
+            const chapterPath = event.target.dataset.path;
+            if (chapterPath) {
+              loadChapter(chapterPath);
+            }
+          }
+        };
+
+        /**
+         * Handler para o evento de rolagem, com debouncing para otimizar.
+         */
+        const handleScroll = () => {
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(saveScrollPosition, 150); // Salva a cada 150ms de inatividade de rolagem
+        };
+
+        // --- Anexar os Event Listeners ---
+        loadButton.addEventListener("click", handleLoadBook);
+        tocList.addEventListener("click", handleTocClick);
+        contentPanel.addEventListener("scroll", handleScroll);
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Leitor de Livros Markdown (GitHub)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      :root {
+        --sidebar-width: 260px;
+        --sidebar-bg: #f4f4f4;
+        --sidebar-bg-mobile: rgba(244, 244, 244, 0.95);
+        --header-bg: #333;
+        --header-color: #fff;
+        --highlight: #ffd54f;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      header {
+        background: var(--header-bg);
+        color: var(--header-color);
+        padding: 0.5em;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5em;
+        align-items: center;
+      }
+      header input[type="text"] {
+        flex: 1 1 220px;
+        padding: 0.3em;
+      }
+      header button {
+        padding: 0.3em 0.6em;
+        background: #555;
+        border: none;
+        color: white;
+        cursor: pointer;
+      }
+      header button:hover {
+        background: #777;
+      }
+      #container {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+      }
+      aside {
+        width: var(--sidebar-width);
+        background: var(--sidebar-bg);
+        overflow-y: auto;
+        transition: transform 0.3s ease;
+      }
+      aside.hidden {
+        transform: translateX(-100%);
+      }
+      aside ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      aside li {
+        padding: 0.5em;
+        cursor: pointer;
+        border-bottom: 1px solid #ddd;
+      }
+      aside li.active {
+        background: var(--highlight);
+        font-weight: bold;
+      }
+      aside li.read {
+        color: #666;
+      }
+      main {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1em;
+      }
+      #toc-internal {
+        background: #fafafa;
+        padding: 0.5em;
+        margin-bottom: 1em;
+        border: 1px solid #ddd;
+      }
+      @media (max-width: 768px) {
+        aside {
+          position: fixed;
+          top: 3.2em;
+          left: 0;
+          height: calc(100% - 3.2em);
+          background: var(--sidebar-bg-mobile);
+          z-index: 10;
+        }
+        main {
+          padding: 0.5em;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <input
+        type="text"
+        id="bookUrl"
+        placeholder="URL do README.md do livro no GitHub"
+      />
+      <button id="loadBook">Carregar Livro</button>
+      <button id="toggleSidebar">📚 Sumário</button>
+      <button id="clearBookMemory">🗑 Limpar Livro</button>
+      <button id="clearAllMemory">🧹 Limpar Tudo</button>
+    </header>
+    <div id="container">
+      <aside id="sidebar">
+        <ul id="toc"></ul>
+      </aside>
+      <main id="content">
+        <h2>Histórico de livros</h2>
+        <ul id="history"></ul>
+      </main>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+      const bookUrlInput = document.getElementById("bookUrl");
+      const loadBookBtn = document.getElementById("loadBook");
+      const toggleSidebarBtn = document.getElementById("toggleSidebar");
+      const clearBookMemoryBtn = document.getElementById("clearBookMemory");
+      const clearAllMemoryBtn = document.getElementById("clearAllMemory");
+      const sidebar = document.getElementById("sidebar");
+      const tocEl = document.getElementById("toc");
+      const contentEl = document.getElementById("content");
+      const historyEl = document.getElementById("history");
+
+      let currentBookUrl = "";
+      let currentBaseUrl = "";
+      let currentToc = [];
+      let currentChapterFile = "";
+
+      function githubToRaw(url) {
+        return url
+          .replace("https://github.com/", "https://raw.githubusercontent.com/")
+          .replace("/blob/", "/");
+      }
+
+      function getBasePath(url) {
+        return url.substring(0, url.lastIndexOf("/") + 1);
+      }
+
+      function saveHistory(url) {
+        let history = JSON.parse(localStorage.getItem("book-history") || "[]");
+        if (!history.includes(url)) {
+          history.push(url);
+          localStorage.setItem("book-history", JSON.stringify(history));
+        }
+      }
+
+      function loadHistory() {
+        historyEl.innerHTML = "";
+        let history = JSON.parse(localStorage.getItem("book-history") || "[]");
+        if (history.length === 0) {
+          historyEl.innerHTML = "<li>Nenhum livro aberto ainda.</li>";
+          return;
+        }
+        history.forEach((url) => {
+          let li = document.createElement("li");
+          li.textContent = url;
+          li.style.cursor = "pointer";
+          li.onclick = () => {
+            bookUrlInput.value = url;
+            loadBook();
+          };
+          historyEl.appendChild(li);
+        });
+      }
+
+      function saveReadingProgress(bookUrl, chapterFile, scrollTop) {
+        localStorage.setItem(
+          `reading-progress-${bookUrl}-${chapterFile}`,
+          scrollTop
+        );
+      }
+
+      function getReadingProgress(bookUrl, chapterFile) {
+        return (
+          localStorage.getItem(`reading-progress-${bookUrl}-${chapterFile}`) ||
+          0
+        );
+      }
+
+      function saveLastChapter(bookUrl, chapterFile) {
+        localStorage.setItem(`last-chapter-${bookUrl}`, chapterFile);
+      }
+
+      function getLastChapter(bookUrl) {
+        return localStorage.getItem(`last-chapter-${bookUrl}`);
+      }
+
+      function markChapterAsRead(bookUrl, chapterFile) {
+        let key = `chapters-read-${bookUrl}`;
+        let read = JSON.parse(localStorage.getItem(key) || "[]");
+        if (!read.includes(chapterFile)) {
+          read.push(chapterFile);
+          localStorage.setItem(key, JSON.stringify(read));
+        }
+      }
+
+      function getReadChapters(bookUrl) {
+        return JSON.parse(
+          localStorage.getItem(`chapters-read-${bookUrl}`) || "[]"
+        );
+      }
+
+      function clearBookMemory(bookUrl) {
+        Object.keys(localStorage).forEach((k) => {
+          if (k.includes(bookUrl)) {
+            localStorage.removeItem(k);
+          }
+        });
+      }
+
+      function clearAllMemory() {
+        localStorage.clear();
+      }
+
+      async function loadBook() {
+        currentBookUrl = bookUrlInput.value.trim();
+        if (!currentBookUrl) return;
+        saveHistory(currentBookUrl);
+        const rawUrl = githubToRaw(currentBookUrl);
+        currentBaseUrl = getBasePath(rawUrl);
+        let text;
+        try {
+          text = await fetch(rawUrl).then((r) => r.text());
+        } catch (e) {
+          alert("Erro ao carregar livro.");
+          return;
+        }
+        const tocRegex = /^\s*[\*\-]\s+\[(.+?)\]\((.+?)\)/gm;
+        currentToc = [];
+        let match;
+        while ((match = tocRegex.exec(text)) !== null) {
+          currentToc.push({ title: match[1], file: match[2] });
+        }
+        renderToc();
+        let last = getLastChapter(currentBookUrl);
+        if (last) {
+          loadChapter(last);
+        } else if (currentToc.length > 0) {
+          loadChapter(currentToc[0].file);
+        }
+      }
+
+      function renderToc() {
+        tocEl.innerHTML = "";
+        const readChapters = getReadChapters(currentBookUrl);
+        currentToc.forEach((item) => {
+          let li = document.createElement("li");
+          li.textContent = item.title;
+          if (item.file === currentChapterFile) li.classList.add("active");
+          if (readChapters.includes(item.file)) li.classList.add("read");
+          li.onclick = () => loadChapter(item.file);
+          tocEl.appendChild(li);
+        });
+      }
+
+      async function loadChapter(file) {
+        currentChapterFile = file;
+        saveLastChapter(currentBookUrl, file);
+        const url = currentBaseUrl + file;
+        let text;
+        try {
+          text = await fetch(url).then((r) => r.text());
+        } catch (e) {
+          alert("Erro ao carregar capítulo.");
+          return;
+        }
+        const html = marked.parse(text);
+        const headings = Array.from(
+          new DOMParser()
+            .parseFromString(html, "text/html")
+            .querySelectorAll("h1,h2,h3")
+        );
+        let tocInternal = "";
+        if (headings.length > 0) {
+          tocInternal =
+            '<div id="toc-internal"><strong>Navegação:</strong><ul>' +
+            headings
+              .map(
+                (h) =>
+                  `<li><a href="#${h.textContent.replace(/\s+/g, "-")}">${
+                    h.textContent
+                  }</a></li>`
+              )
+              .join("") +
+            "</ul></div>";
+        }
+        const htmlWithAnchors = html.replace(
+          /<(h[1-6])>(.*?)<\/\1>/g,
+          (m, tag, text) => {
+            const id = text.replace(/\s+/g, "-");
+            return `<${tag} id="${id}">${text}</${tag}>`;
+          }
+        );
+        contentEl.innerHTML = tocInternal + htmlWithAnchors;
+        const savedScroll = getReadingProgress(currentBookUrl, file);
+        contentEl.scrollTop = savedScroll;
+        contentEl.onscroll = () => {
+          saveReadingProgress(currentBookUrl, file, contentEl.scrollTop);
+        };
+        markChapterAsRead(currentBookUrl, file);
+        renderToc();
+      }
+
+      toggleSidebarBtn.onclick = () => {
+        sidebar.classList.toggle("hidden");
+      };
+
+      clearBookMemoryBtn.onclick = () => {
+        if (currentBookUrl && confirm("Limpar dados deste livro?")) {
+          clearBookMemory(currentBookUrl);
+          loadHistory();
+        }
+      };
+
+      clearAllMemoryBtn.onclick = () => {
+        if (confirm("Limpar TODOS os dados?")) {
+          clearAllMemory();
+          loadHistory();
+        }
+      };
+
+      loadBookBtn.onclick = loadBook;
+
+      loadHistory();
+    </script>
+  </body>
+</html>
