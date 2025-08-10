@@ -286,6 +286,50 @@
         font-weight: 700;
       }
 
+      /* estilos adicionados para TOC interno na sidebar */
+      .internal-toc {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.4;
+        /* max-height: 260px; */
+        overflow: auto;
+      }
+      .internal-toc strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+      .internal-toc ul {
+        list-style: none;
+        margin: 6px 0 0;
+        padding: 0;
+      }
+      .internal-toc li {
+        margin: 0;
+        padding: 0;
+      }
+      .internal-toc a {
+        display: block;
+        padding: 2px 0;
+        color: var(--muted);
+        text-decoration: none;
+        white-space: normal;
+      }
+      .internal-toc a:hover {
+        color: var(--accent);
+      }
+      .internal-toc a.active {
+        color: var(--accent);
+        font-weight: 600;
+      }
+
       /* mobile adjustments */
       @media (max-width: 900px) {
         aside.toc {
@@ -902,7 +946,6 @@
                   .toLowerCase();
                 let uniqueId =
                   id || "h-" + Math.random().toString(36).slice(2, 8);
-                // avoid duplicates
                 let i = 1;
                 while (doc.getElementById(uniqueId)) {
                   uniqueId = id + "-" + i++;
@@ -914,17 +957,15 @@
             // serialize back
             const contentHtml = doc.body.innerHTML;
 
-            // render internal TOC (nested)
+            // build internal TOC html (não inserir aqui no conteúdo principal)
             const internalTocHtml = buildInternalTocHtml(headings);
-            contentEl.innerHTML =
-              (internalTocHtml
-                ? `<div class="toc-internal" id="tocInternalWrap">${internalTocHtml}</div>`
-                : "") + `<div id="chapterContent">${contentHtml}</div>`;
+
+            // apenas o capítulo no main
+            contentEl.innerHTML = `<div id="chapterContent">${contentHtml}</div>`;
 
             // after render, restore scroll position (saved per-chapter)
             const key = makeStorageKeyProgress(book.originalUrl, chapter.href);
             const saved = parseInt(localStorage.getItem(key) || "0", 10);
-            // small timeout to allow images to load / layout to settle
             requestAnimationFrame(() => {
               if (!isNaN(saved) && saved > 0) reader.scrollTop = saved;
               else reader.scrollTop = 0;
@@ -939,6 +980,28 @@
             // mark as read
             markChapterAsRead(book.originalUrl, chapter.href);
             renderToc();
+
+            // Injetar TOC interno no item ativo da sidebar
+            try {
+              // remover TOC interno anterior
+              document
+                .querySelectorAll("#tocList .internal-toc")
+                .forEach((el) => el.remove());
+              if (internalTocHtml) {
+                const activeLi = document.querySelector(
+                  "#tocList .toc-item.active"
+                );
+                if (activeLi) {
+                  const wrap = document.createElement("div");
+                  wrap.className = "internal-toc";
+                  wrap.id = "tocInternalWrap";
+                  wrap.innerHTML = internalTocHtml;
+                  activeLi.appendChild(wrap);
+                }
+              }
+            } catch (e) {
+              console.warn("Falha ao montar TOC interno na sidebar", e);
+            }
 
             // attach link handlers for markdown links
             attachContentLinks();
@@ -990,6 +1053,16 @@
           reader.addEventListener("scroll", reader._saveScrollFn);
         }
 
+        // helper para scroll suave dentro do container reader
+        function scrollToId(id) {
+          const target = document.getElementById(id);
+            if (!target) return;
+            const readerRect = reader.getBoundingClientRect();
+            const targetRect = target.getBoundingClientRect();
+            const offset = targetRect.top - readerRect.top + reader.scrollTop - 8; // pequeno ajuste
+            reader.scrollTo({ top: offset, behavior: 'smooth' });
+        }
+
         function attachContentLinks() {
           // intercept links in chapter content
           const wrap = document.getElementById("chapterContent");
@@ -1029,10 +1102,7 @@
               a.addEventListener("click", (ev) => {
                 ev.preventDefault();
                 const id = a.getAttribute("href").slice(1);
-                const target = document.getElementById(id);
-                if (target) {
-                  target.scrollIntoView({ behavior: "smooth", block: "start" });
-                }
+                scrollToId(id);
               });
             } else {
               // external: open new tab
@@ -1048,9 +1118,7 @@
               a.addEventListener("click", (ev) => {
                 ev.preventDefault();
                 const id = a.dataset.id;
-                const el = document.getElementById(id);
-                if (el)
-                  el.scrollIntoView({ behavior: "smooth", block: "start" });
+                scrollToId(id);
               });
             });
           }
