@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>GitBook Reader – Leitor de livros Markdown do GitHub</title>
+    <meta
+      name="description"
+      content="Leitor de livros/documentos Markdown do GitHub com histórico, sumário, TOC interno e progresso salvo no navegador."
+    />
+    <link rel="canonical" href="" id="canonical-link" />
+    <meta name="theme-color" content="#0f172a" />
+
+    <meta property="og:title" content="GitBook Reader" />
+    <meta
+      property="og:description"
+      content="Agregador e leitor de livros Markdown do GitHub. Histórico, TOC, sumário e progresso persistente."
+    />
+    <meta property="og:type" content="website" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "GitBook Reader",
+        "applicationCategory": "Productivity",
+        "description": "Leitor de livros/documentos Markdown do GitHub com histórico e progresso persistente.",
+        "operatingSystem": "Web"
+      }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+      :root {
+        --bg: 222 47% 8%;
+        --bg-soft: 222 44% 10.5%;
+        --text: 210 40% 96%;
+        --muted: 215 16% 65%;
+        --primary: 260 90% 66%;
+        --primary-strong: 260 90% 60%;
+        --accent: 200 85% 62%;
+        --card: 223 36% 12%;
+        --border: 223 24% 20%;
+        --success: 150 70% 45%;
+        --shadow: 0 10px 30px rgba(80, 70, 255, 0.25);
+        --radius: 14px;
+        --radius-sm: 10px;
+        --radius-xs: 8px;
+        --transition: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      /* Base */
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: hsl(var(--bg));
+        color: hsl(var(--text));
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji",
+          "Segoe UI Emoji";
+        line-height: 1.6;
+        letter-spacing: 0.2px;
+        overflow: hidden;
+      }
+      .app-shell {
+        position: relative;
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        background: radial-gradient(
+            1000px 600px at var(--mx, 50%) var(--my, 15%),
+            hsl(260 90% 20% / 0.35),
+            transparent 60%
+          ),
+          radial-gradient(
+            900px 500px at calc(var(--mx, 50%) + 20%) calc(var(--my, 15%) + 20%),
+            hsl(200 85% 18% / 0.25),
+            transparent 60%
+          ),
+          linear-gradient(180deg, hsl(var(--bg-soft)), hsl(var(--bg)) 50%);
+      }
+
+      /* Header */
+      header.site-header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: saturate(140%) blur(10px);
+        background: linear-gradient(
+          180deg,
+          hsl(var(--bg-soft) / 0.85),
+          transparent
+        );
+        border-bottom: 1px solid hsl(var(--border));
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 16px 20px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+      }
+      .brand-badge {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: linear-gradient(
+          135deg,
+          hsl(var(--primary)),
+          hsl(var(--accent))
+        );
+        box-shadow: 0 6px 18px hsl(var(--primary) / 0.35);
+      }
+      .brand h1 {
+        font-size: 18px;
+        margin: 0;
+      }
+
+      .loader {
+        display: none;
+        font-size: 14px;
+        color: hsl(var(--muted));
+      }
+
+      .load-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .input {
+        width: 100%;
+        height: 42px;
+        border-radius: var(--radius-sm);
+        background: hsl(var(--card));
+        color: hsl(var(--text));
+        border: 1px solid hsl(var(--border));
+        padding: 0 14px;
+        outline: none;
+        transition: box-shadow var(--transition), border-color var(--transition);
+      }
+      .input:focus {
+        box-shadow: 0 0 0 3px hsl(var(--accent) / 0.3);
+        border-color: hsl(var(--accent));
+      }
+      .btn {
+        height: 42px;
+        padding: 0 16px;
+        border-radius: var(--radius-sm);
+        border: 1px solid hsl(var(--border));
+        background: linear-gradient(
+          135deg,
+          hsl(var(--primary)),
+          hsl(var(--accent))
+        );
+        color: white;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        cursor: pointer;
+        transition: transform var(--transition), filter var(--transition),
+          box-shadow var(--transition);
+        box-shadow: var(--shadow);
+      }
+      .btn:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.05);
+      }
+      .btn:active {
+        transform: translateY(0);
+        filter: brightness(0.98);
+      }
+      .btn.secondary {
+        background: hsl(var(--card));
+        color: hsl(var(--text));
+        box-shadow: none;
+      }
+      .btn.secondary:hover {
+        border-color: hsl(var(--accent));
+        box-shadow: 0 8px 24px hsl(var(--accent) / 0.18);
+      }
+
+      /* Views */
+      main {
+        height: calc(100vh - 82px);
+      }
+      .view {
+        height: 100%;
+        overflow: auto;
+      }
+
+      /* Home */
+      .home-wrap {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 22px;
+        padding: 22px 20px 40px;
+      }
+      .panel {
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius);
+        background: linear-gradient(
+          180deg,
+          hsl(var(--card) / 0.95),
+          hsl(var(--card) / 0.9)
+        );
+      }
+      .panel-header {
+        padding: 16px 18px;
+        border-bottom: 1px solid hsl(var(--border));
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .panel-header h2 {
+        margin: 0;
+        font-size: 16px;
+        letter-spacing: 0.2px;
+      }
+      .panel-body {
+        padding: 14px 16px;
+      }
+
+      .history-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 10px;
+      }
+      .history-item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        align-items: center;
+        padding: 12px;
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius-sm);
+        background: hsl(var(--bg) / 0.35);
+        transition: background var(--transition), border-color var(--transition);
+      }
+      .history-item:hover {
+        background: hsl(var(--accent) / 0.08);
+        border-color: hsl(var(--accent) / 0.6);
+      }
+      .history-title {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0;
+      }
+      .history-meta {
+        font-size: 12px;
+        color: hsl(var(--muted));
+      }
+      .btn-icon {
+        width: 36px;
+        height: 36px;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 10px;
+        cursor: pointer;
+        background: hsl(var(--card));
+        border: 1px solid hsl(var(--border));
+        color: hsl(var(--muted));
+        transition: var(--transition);
+      }
+      .btn-icon:hover {
+        color: #fff;
+        border-color: hsl(var(--accent));
+        box-shadow: 0 10px 22px hsl(var(--accent) / 0.22);
+      }
+
+      /* Reader layout */
+      .reader {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        height: 100%;
+        transition: grid-template-columns var(--transition);
+      }
+      .sidebar-toggle-btn {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        z-index: 60;
+        display: none;
+      }
+      #reader-view:not([hidden]) .sidebar-toggle-btn {
+        display: inline-grid;
+      }
+      .sidebar-toggle-btn .icon-open { display: none; }
+      .sidebar-toggle-btn .icon-close { display: block; }
+      
+      .reader.sidebar-collapsed {
+        grid-template-columns: 0px 1fr;
+      }
+      .reader.sidebar-collapsed .sidebar {
+        opacity: 0;
+        pointer-events: none;
+        padding-inline: 0;
+        border-right-width: 0;
+        overflow: hidden;
+      }
+      .reader.sidebar-collapsed .sidebar-toggle-btn .icon-open { display: block; }
+      .reader.sidebar-collapsed .sidebar-toggle-btn .icon-close { display: none; }
+
+
+      @media (max-width: 900px) {
+        .reader {
+          grid-template-columns: 1fr;
+        }
+        .sidebar {
+          position: relative;
+          height: auto;
+          max-height: 40vh;
+        }
+        .content {
+          height: calc(100% - 40vh);
+        }
+        .sidebar-toggle-btn {
+          display: none !important;
+        }
+      }
+
+      .sidebar {
+        border-right: 1px solid hsl(var(--border));
+        background: linear-gradient(
+          180deg,
+          hsl(var(--card) / 0.95),
+          hsl(var(--card) / 0.9)
+        );
+        overflow: auto;
+        transition: opacity var(--transition), padding var(--transition), border-width var(--transition);
+      }
+      .sidebar .s-inner {
+        padding: 16px;
+      }
+      .book-title {
+        font-size: 16px;
+        margin: 0 0 10px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+      }
+      .nav-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 6px;
+      }
+      .nav-item {
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius-sm);
+        background: hsl(var(--bg) / 0.35);
+      }
+      .chapter-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        text-align: left;
+        background: transparent;
+        color: hsl(var(--text));
+        border: none;
+        padding: 10px 12px;
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        transition: background var(--transition), border-color var(--transition),
+          transform var(--transition);
+      }
+      .chapter-btn:hover {
+        background: hsl(var(--accent) / 0.08);
+      }
+      .chapter-btn .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: hsl(var(--border));
+        flex: 0 0 auto;
+      }
+      .chapter-btn.read .dot {
+        background: hsl(var(--success));
+      }
+      .chapter-title {
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.3;
+        letter-spacing: 0.2px;
+      }
+
+      .toc {
+        margin: 6px 0 10px 22px;
+        padding-left: 10px;
+        border-left: 2px solid hsl(var(--border));
+        display: grid;
+        gap: 6px;
+      }
+      .toc a {
+        display: block;
+        color: hsl(var(--muted));
+        text-decoration: none;
+        font-size: 13px;
+        padding: 4px 6px;
+        border-radius: 6px;
+        transition: background var(--transition), color var(--transition);
+      }
+      .toc a:hover {
+        color: white;
+        background: hsl(var(--accent) / 0.12);
+      }
+      .toc a.active {
+        color: white;
+        background: linear-gradient(
+          135deg,
+          hsl(var(--primary) / 0.28),
+          hsl(var(--accent) / 0.24)
+        );
+      }
+
+      .content {
+        position: relative;
+        overflow: auto;
+      }
+      .article {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 28px 26px 80px;
+      }
+      .article h1,
+      .article h2,
+      .article h3,
+      .article h4,
+      .article h5 {
+        scroll-margin-top: 20px;
+      }
+      .article h1 {
+        font-size: 32px;
+        line-height: 1.2;
+        margin: 10px 0 16px;
+      }
+      .article h2 {
+        font-size: 24px;
+        margin: 28px 0 10px;
+      }
+      .article h3 {
+        font-size: 20px;
+        margin: 22px 0 8px;
+        color: hsl(var(--text));
+      }
+      .article p {
+        color: hsl(var(--text));
+        opacity: 0.95;
+      }
+      .article code {
+        background: hsl(var(--bg) / 0.6);
+        padding: 2px 6px;
+        border-radius: 6px;
+        border: 1px solid hsl(var(--border));
+      }
+      .article pre {
+        background: hsl(var(--bg) / 0.6);
+        padding: 16px;
+        border-radius: 10px;
+        border: 1px solid hsl(var(--border));
+        overflow: auto;
+      }
+      .article a {
+        color: hsl(var(--accent));
+        text-decoration: none;
+      }
+      .article a:hover {
+        text-decoration: underline;
+      }
+      .article img {
+        max-width: 100%;
+        border-radius: 8px;
+        border: 1px solid hsl(var(--border));
+        box-shadow: 0 8px 24px hsl(var(--accent) / 0.12);
+      }
+
+      .empty {
+        color: hsl(var(--muted));
+        padding: 16px;
+        text-align: center;
+      }
+      .error {
+        color: #fca5a5;
+        padding: 8px 12px;
+        border: 1px solid #7f1d1d;
+        background: #450a0a;
+        border-radius: 8px;
+      }
+
+      /* Signature micro-interaction: ambient pointer light */
+      @media (prefers-reduced-motion: no-preference) {
+        body {
+          transition: background 600ms ease;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell" id="app">
+      <header class="site-header">
+        <div class="container">
+          <div class="brand" aria-label="GitBook Reader">
+            <div class="brand-badge" aria-hidden="true"></div>
+            <h1>GitBook Reader</h1>
+          </div>
+          <div class="load-row" role="search">
+            <input
+              id="url-input"
+              class="input"
+              type="text"
+              placeholder="Cole a URL do arquivo no GitHub (ex: https://github.com/user/repo/blob/main/README.md)"
+              aria-label="URL do documento no GitHub"
+            />
+            <button id="load-btn" class="btn" aria-label="Carregar livro">
+              Carregar Livro
+            </button>
+          </div>
+          <div class="loader" id="loader">Carregando…</div>
+        </div>
+      </header>
+
+      <main>
+        <section id="home-view" class="view" aria-label="Tela inicial">
+          <div class="home-wrap container">
+            <article class="panel" aria-labelledby="history-title">
+              <div class="panel-header">
+                <h2 id="history-title">Meus Livros</h2>
+                <button class="btn secondary" id="clear-history">
+                  Limpar todo o histórico
+                </button>
+              </div>
+              <div class="panel-body">
+                <ul id="history-list" class="history-list"></ul>
+                <div id="history-empty" class="empty">
+                  Nenhum livro adicionado ainda.
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="reader-view" class="view" hidden aria-label="Leitor">
+          <div class="reader" id="reader-container">
+            <aside class="sidebar" aria-label="Navegação do livro">
+              <div class="s-inner">
+                <h2 class="book-title" id="book-title">—</h2>
+                <ul id="book-toc" class="nav-list"></ul>
+              </div>
+            </aside>
+            <section
+              class="content"
+              aria-label="Conteúdo do capítulo"
+              id="content-scroll"
+            >
+              <button id="toggle-sidebar-btn" class="btn-icon sidebar-toggle-btn" aria-label="Esconder/Mostrar sumário" title="Esconder/Mostrar sumário">
+                <svg class="icon-close" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg>
+                <svg class="icon-open" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m8 15 3-3-3-3"/></svg>
+              </button>
+              <article class="article" id="article"></article>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      // Utilities
+      const $ = (sel, ctx = document) => ctx.querySelector(sel);
+      const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+      const byId = (id) => document.getElementById(id);
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+      // Signature ambient light following pointer
+      document.addEventListener("pointermove", (e) => {
+        const r = document.documentElement.style;
+        const x = (e.clientX / window.innerWidth) * 100;
+        const y = (e.clientY / window.innerHeight) * 100;
+        r.setProperty("--mx", x + "%");
+        r.setProperty("--my", y + "%");
+      });
+
+      // Local Storage Keys
+      const LS_HISTORY = "gbreader.history.v1";
+      const progressKey = (bookBase, chapterUrl) =>
+        `progress-${encodeURIComponent(bookBase)}-${encodeURIComponent(
+          chapterUrl
+        )}`;
+
+      // State
+      let state = {
+        page: "home",
+        book: null, // { id, title, indexUrl, baseRaw, chapters: [ {title, url} ], lastChapterUrl, lastScroll, readChapters: [] }
+        chapterUrl: null,
+        observer: null,
+      };
+
+      // History helpers
+      function readHistory() {
+        try {
+          return JSON.parse(localStorage.getItem(LS_HISTORY) || "[]");
+        } catch {
+          return [];
+        }
+      }
+      function writeHistory(items) {
+        localStorage.setItem(LS_HISTORY, JSON.stringify(items));
+      }
+      function upsertBook(book) {
+        const list = readHistory();
+        const idx = list.findIndex((b) => b.id === book.id);
+        if (idx >= 0)
+          list[idx] = {
+            ...list[idx],
+            ...book,
+            updatedAt: new Date().toISOString(),
+          };
+        else
+          list.unshift({
+            ...book,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+        writeHistory(list);
+        return list[idx >= 0 ? idx : 0];
+      }
+      function removeBook(id) {
+        writeHistory(readHistory().filter((b) => b.id !== id));
+      }
+
+      // URL conversion
+      function toRawUrl(url) {
+        try {
+          const u = new URL(url.trim());
+          if (u.hostname === "raw.githubusercontent.com") return u.toString();
+          if (u.hostname === "github.com") {
+            // /user/repo/blob/branch/path/to/file.md
+            const parts = u.pathname.split("/").filter(Boolean);
+            const user = parts[0];
+            const repo = parts[1];
+            // supports blob or raw path forms
+            let idxBlob = parts.indexOf("blob");
+            if (idxBlob !== -1) {
+              const branch = parts[idxBlob + 1];
+              const rest = parts.slice(idxBlob + 2).join("/");
+              return `https://raw.githubusercontent.com/${user}/${repo}/${branch}/${rest}`;
+            }
+            // if already pointing to raw tree file via query? fallback
+          }
+          return url; // fallback unchanged
+        } catch {
+          return url;
+        }
+      }
+      function baseOfRaw(rawUrl) {
+        // directory base ending with '/'
+        const u = new URL(rawUrl);
+        const segs = u.pathname.split("/");
+        segs.pop();
+        u.pathname = segs.join("/") + "/";
+        return u.toString();
+      }
+      function resolveRelative(base, href) {
+        try {
+          return new URL(href, base).toString();
+        } catch {
+          return href;
+        }
+      }
+
+      // Analysis using Marked lexer
+      function extractChaptersFromMarkdown(md, base) {
+        const tokens = marked.lexer(md);
+        // find first list containing links
+        /** @type {{ title: string, url: string }[]} */
+        const chapters = [];
+        const pushListItems = (items) => {
+          for (const it of items) {
+            // item tokens may include link in text; render text tokens to find link tokens
+            const text = marked.parser(it.tokens || []);
+            // temp DOM parse
+            const div = document.createElement("div");
+            div.innerHTML = text;
+            const link = div.querySelector("a[href]");
+            if (link) {
+              const raw = resolveRelative(base, link.getAttribute("href"));
+              chapters.push({
+                title: (link.textContent || "Capítulo").trim(),
+                url: raw,
+              });
+            }
+          }
+        };
+        for (const t of tokens) {
+          if (t.type === "list" && t.items?.length) {
+            pushListItems(t.items);
+            if (chapters.length) break;
+          }
+        }
+        return chapters;
+      }
+
+      async function fetchText(url) {
+        const res = await fetch(url, { headers: { Accept: "text/plain" } });
+        if (!res.ok) throw new Error("Falha ao carregar conteúdo");
+        return await res.text();
+      }
+
+      // Render Home
+      function renderHistory() {
+        const list = readHistory();
+        const ul = byId("history-list");
+        const empty = byId("history-empty");
+        ul.innerHTML = "";
+        if (!list.length) {
+          empty.style.display = "block";
+          return;
+        }
+        empty.style.display = "none";
+        for (const b of list) {
+          const li = document.createElement("li");
+          li.className = "history-item";
+          const left = document.createElement("div");
+          const title = document.createElement("p");
+          title.className = "history-title";
+          title.textContent = b.title || "Sem título";
+          const meta = document.createElement("p");
+          meta.className = "history-meta";
+          meta.textContent =
+            new URL(b.indexUrl).host +
+            " • " +
+            (b.chapters?.length || 1) +
+            " cap.";
+          left.appendChild(title);
+          left.appendChild(meta);
+          const actions = document.createElement("div");
+          const openBtn = document.createElement("button");
+          openBtn.className = "btn secondary";
+          openBtn.textContent = "Abrir";
+          openBtn.addEventListener("click", () => openBookFromHistory(b.id));
+          const delBtn = document.createElement("button");
+          delBtn.className = "btn-icon";
+          delBtn.title = "Remover";
+          delBtn.setAttribute("aria-label", "Remover");
+          delBtn.innerHTML = "✕";
+          delBtn.addEventListener("click", () => {
+            removeBook(b.id);
+            renderHistory();
+          });
+          actions.style.display = "flex";
+          actions.style.gap = "8px";
+          actions.appendChild(openBtn);
+          actions.appendChild(delBtn);
+          li.appendChild(left);
+          li.appendChild(actions);
+          ul.appendChild(li);
+        }
+      }
+
+      // Reader
+      function showView(name) {
+        state.page = name;
+        byId("home-view").hidden = name !== "home";
+        byId("reader-view").hidden = name !== "reader";
+      }
+
+      function setCanonical(url) {
+        const c = byId("canonical-link");
+        if (c) c.href = location.href;
+        document.title = url
+          ? `GitBook Reader – ${state.book?.title || ""}`
+          : "GitBook Reader – Leitor de livros Markdown do GitHub";
+      }
+
+      function sanitizeMarkdown(md) {
+        // Keep as-is; Marked does not sanitize by default.
+        return md;
+      }
+
+      function rewriteResourceLinks(rootBase, container) {
+        // images and anchors
+        $$("img", container).forEach((img) => {
+          const src = img.getAttribute("src");
+          if (!src) return;
+          const abs = resolveRelative(rootBase, src);
+          img.setAttribute("src", abs);
+          img.setAttribute("loading", "lazy");
+          img.setAttribute(
+            "alt",
+            img.getAttribute("alt") || "Imagem do documento"
+          );
+        });
+        $$("a", container).forEach((a) => {
+          const href = a.getAttribute("href");
+          if (!href) return;
+          const abs = resolveRelative(rootBase, href);
+          a.setAttribute("href", abs);
+          // intercept internal .md links to navigate
+          a.addEventListener("click", (e) => {
+            const isMd =
+              /\.(md|markdown)(#.*)?$/i.test(abs) ||
+              abs.startsWith(state.book?.baseRaw || "");
+            if (isMd) {
+              e.preventDefault();
+              openChapter(abs);
+            } else {
+              a.target = "_blank";
+            }
+          });
+        });
+      }
+
+      function buildInnerTOC(container) {
+        const headings = $$("h1, h2, h3, h4", container);
+        const toc = document.createElement("div");
+        toc.className = "toc";
+        // Ensure IDs
+        const slug = (s) =>
+          s
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-");
+        headings.forEach((h, i) => {
+          if (!h.id) h.id = slug(h.textContent || "sec-" + i);
+        });
+        headings.forEach((h) => {
+          const a = document.createElement("a");
+          a.href = "#" + h.id;
+          a.textContent = h.textContent || "";
+          a.style.marginLeft =
+            ({ H1: 0, H2: 8, H3: 16, H4: 24 }[h.tagName] || 0) + "px";
+          a.addEventListener("click", (e) => {
+            e.preventDefault();
+            byId("content-scroll").scrollTo({
+              top: h.offsetTop - 12,
+              behavior: "smooth",
+            });
+          });
+          toc.appendChild(a);
+        });
+        return { toc, headings };
+      }
+
+      function observeHeadings(headings, tocEl) {
+        if (state.observer) {
+          state.observer.disconnect();
+          state.observer = null;
+        }
+        const map = new Map();
+        const links = $$("a", tocEl);
+        headings.forEach((h, idx) => map.set(h.id, links[idx]));
+        const root = byId("content-scroll");
+        const obs = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              const link = map.get(entry.target.id);
+              if (!link) return;
+              if (entry.isIntersecting) {
+                links.forEach((l) => l.classList.remove("active"));
+                link.classList.add("active");
+              }
+            });
+          },
+          { root, threshold: 0.1, rootMargin: "0px 0px -70% 0px" }
+        );
+        headings.forEach((h) => obs.observe(h));
+        state.observer = obs;
+      }
+
+      function markChapterAsRead(url) {
+        if (!state.book) return;
+        const set = new Set(state.book.readChapters || []);
+        if (!set.has(url)) {
+          set.add(url);
+          state.book.readChapters = Array.from(set);
+          upsertBook(state.book);
+          renderBookTOC();
+        }
+      }
+
+      function saveScrollProgress() {
+        if (!state.book || !state.chapterUrl) return;
+        const scroller = byId("content-scroll");
+        const key = progressKey(state.book.baseRaw, state.chapterUrl);
+        localStorage.setItem(key, String(scroller.scrollTop));
+        // Also store last position in book object
+        state.book.lastChapterUrl = state.chapterUrl;
+        state.book.lastScroll = scroller.scrollTop;
+        upsertBook(state.book);
+      }
+
+      function restoreScrollProgress() {
+        if (!state.book || !state.chapterUrl) return;
+        const scroller = byId("content-scroll");
+        const key = progressKey(state.book.baseRaw, state.chapterUrl);
+        const val = Number(localStorage.getItem(key) || "0");
+        if (Number.isFinite(val) && val >= 0) scroller.scrollTo({ top: val });
+      }
+
+      let throttleSave;
+      function attachScrollSaver() {
+        const scroller = byId("content-scroll");
+        scroller.removeEventListener("scroll", throttleSave);
+        throttleSave = () => {
+          if (attachScrollSaver.ticking) return;
+          attachScrollSaver.ticking = true;
+          requestAnimationFrame(() => {
+            saveScrollProgress();
+            attachScrollSaver.ticking = false;
+          });
+        };
+        scroller.addEventListener("scroll", throttleSave, { passive: true });
+      }
+
+      function renderBookTOC() {
+        const ul = byId("book-toc");
+        ul.innerHTML = "";
+        const readSet = new Set(state.book?.readChapters || []);
+        (state.book?.chapters || []).forEach((ch) => {
+          const li = document.createElement("li");
+          li.className = "nav-item";
+          const btn = document.createElement("button");
+          btn.className = "chapter-btn";
+          if (readSet.has(ch.url)) btn.classList.add("read");
+          const dot = document.createElement("span");
+          dot.className = "dot";
+          const title = document.createElement("span");
+          title.className = "chapter-title";
+          title.textContent = ch.title;
+          btn.appendChild(dot);
+          btn.appendChild(title);
+          btn.addEventListener("click", () => openChapter(ch.url));
+          li.appendChild(btn);
+          // Inner TOC mount point (when active)
+          const sub = document.createElement("div");
+          sub.className = "toc";
+          sub.style.display = "none";
+          li.appendChild(sub);
+          ul.appendChild(li);
+        });
+      }
+
+      async function openChapter(url) {
+        try {
+          byId("loader").style.display = "block";
+          state.chapterUrl = url;
+          const md = await fetchText(url);
+          const article = byId("article");
+          const base = baseOfRaw(url);
+          const html = marked.parse(sanitizeMarkdown(md), {
+            mangle: false,
+            headerIds: true,
+          });
+          article.innerHTML = html;
+          rewriteResourceLinks(base, article);
+          // Build inner TOC
+          const { toc, headings } = buildInnerTOC(article);
+          // Expand the corresponding TOC slot under the active chapter
+          const idx = (state.book.chapters || []).findIndex(
+            (c) => c.url === url
+          );
+          const ul = byId("book-toc");
+          $$(":scope > li .toc", ul).forEach(
+            (t, i) => (t.style.display = i === idx ? "grid" : "none")
+          );
+          const host = $$(":scope > li", ul)[idx];
+          const mount = host?.querySelector(".toc");
+          if (mount) {
+            mount.innerHTML = "";
+            mount.appendChild(toc);
+          }
+          observeHeadings(headings, toc);
+          showView("reader");
+          setCanonical(url);
+          // mark read + restore progress
+          markChapterAsRead(url);
+          await sleep(10);
+          restoreScrollProgress();
+          attachScrollSaver();
+        } catch (e) {
+          byId("article").innerHTML = `<div class="error">${
+            (e && e.message) || "Erro ao abrir capítulo"
+          }</div>`;
+        } finally {
+          byId("loader").style.display = "none";
+        }
+      }
+
+      async function loadBookFromUrl(inputUrl) {
+        const rawIndex = toRawUrl(inputUrl);
+        const base = baseOfRaw(rawIndex);
+        byId("loader").style.display = "block";
+        try {
+          // Load index markdown
+          const md = await fetchText(rawIndex);
+          // Determine title from first H1 or fallback
+          let title = "Livro";
+          const m = md.match(/^\s*#\s+(.+)$/m);
+          if (m) title = m[1].trim();
+          const chapters = extractChaptersFromMarkdown(md, base);
+          const isMulti = chapters.length > 0;
+          const book = {
+            id: rawIndex,
+            title: title || "Livro",
+            indexUrl: rawIndex,
+            baseRaw: base,
+            chapters: isMulti
+              ? chapters
+              : [{ title: title || "Documento", url: rawIndex }],
+            lastChapterUrl: undefined,
+            lastScroll: 0,
+            readChapters: [],
+          };
+          state.book = upsertBook(book);
+          byId("book-title").textContent = state.book.title;
+          renderBookTOC();
+          // Open last or first chapter
+          const chapterToOpen =
+            state.book.lastChapterUrl || state.book.chapters[0].url;
+          await openChapter(chapterToOpen);
+          renderHistory();
+        } catch (e) {
+          showView("home");
+          alert((e && e.message) || "Erro ao carregar livro");
+        } finally {
+          byId("loader").style.display = "none";
+        }
+      }
+
+      async function openBookFromHistory(id) {
+        const b = readHistory().find((x) => x.id === id);
+        if (!b) return;
+        state.book = b;
+        byId("book-title").textContent = state.book.title;
+        renderBookTOC();
+        const chapterToOpen =
+          b.lastChapterUrl || b.chapters?.[0]?.url || b.indexUrl;
+        await openChapter(chapterToOpen);
+      }
+
+      // Events
+      byId("load-btn").addEventListener("click", () => {
+        const url = byId("url-input").value.trim();
+        if (!url) return;
+        loadBookFromUrl(url);
+      });
+      byId("url-input").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") byId("load-btn").click();
+      });
+      byId("clear-history").addEventListener("click", () => {
+        if (confirm("Tem certeza que deseja apagar todo o histórico?")) {
+          writeHistory([]);
+          renderHistory();
+        }
+      });
+      byId("toggle-sidebar-btn").addEventListener("click", () => {
+        byId("reader-container").classList.toggle("sidebar-collapsed");
+      });
+
+      // Init
+      function init() {
+        marked.setOptions({
+          gfm: true,
+          breaks: false,
+          mangle: false,
+          headerIds: true,
+        });
+        renderHistory();
+        showView("home");
+        setCanonical();
+      }
+      init();
+    </script>
+  </body>
+</html>
