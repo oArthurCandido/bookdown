@@ -682,7 +682,57 @@
         return list[idx >= 0 ? idx : 0];
       }
       function removeBook(id) {
+        // First, get the book to remove its related data
+        const book = readHistory().find(b => b.id === id);
+        if (book) {
+          clearBookRelatedData(book);
+        }
         writeHistory(readHistory().filter((b) => b.id !== id));
+      }
+      
+      function clearBookRelatedData(book) {
+        // Remove all progress keys for this book's chapters
+        if (book.chapters && book.baseRaw) {
+          book.chapters.forEach(chapter => {
+            const key = progressKey(book.baseRaw, chapter.url);
+            localStorage.removeItem(key);
+          });
+        }
+        
+        // Also try to remove progress for the main index URL if it exists
+        if (book.indexUrl && book.baseRaw) {
+          const indexKey = progressKey(book.baseRaw, book.indexUrl);
+          localStorage.removeItem(indexKey);
+        }
+        
+        // Remove any other book-related keys that might exist
+        const bookId = encodeURIComponent(book.id);
+        const bookBase = book.baseRaw ? encodeURIComponent(book.baseRaw) : '';
+        
+        // Iterate through localStorage to find and remove related keys
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (
+            key.includes(bookId) || 
+            (bookBase && key.includes(bookBase))
+          )) {
+            keysToRemove.push(key);
+          }
+        }
+        
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+      }
+      
+      function clearAllBooksData() {
+        // Get all books before clearing
+        const books = readHistory();
+        
+        // Clear data for each book
+        books.forEach(book => clearBookRelatedData(book));
+        
+        // Clear the history
+        writeHistory([]);
       }
 
       // URL conversion
@@ -1149,8 +1199,8 @@
         if (e.key === "Enter") byId("load-btn").click();
       });
       byId("clear-history").addEventListener("click", () => {
-        if (confirm("Tem certeza que deseja apagar todo o histórico?")) {
-          writeHistory([]);
+        if (confirm("Tem certeza que deseja apagar todo o histórico e progresso de leitura?")) {
+          clearAllBooksData();
           renderHistory();
         }
       });
