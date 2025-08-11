@@ -450,6 +450,23 @@
         position: relative;
         overflow: auto;
       }
+      
+      /* Reading progress indicator */
+      .reading-progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 0%;
+        height: 3px;
+        background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)));
+        z-index: 1000;
+        transition: width 150ms ease;
+        opacity: 0;
+      }
+      .reading-progress.visible {
+        opacity: 1;
+      }
+      
       .article {
         max-width: 900px;
         margin: 0 auto;
@@ -529,6 +546,7 @@
     </style>
   </head>
   <body>
+    <div class="reading-progress" id="reading-progress"></div>
     <div class="app-shell" id="app">
       <header class="site-header">
         <div class="container">
@@ -801,6 +819,12 @@
         state.page = name;
         byId("home-view").hidden = name !== "home";
         byId("reader-view").hidden = name !== "reader";
+        
+        // Hide progress bar when not in reader
+        const progressBar = byId("reading-progress");
+        if (name !== "reader") {
+          progressBar.classList.remove("visible");
+        }
       }
 
       function setCanonical(url) {
@@ -920,6 +944,33 @@
         }
       }
 
+      function checkIfChapterCompleted() {
+        if (!state.chapterUrl) return;
+        
+        const scroller = byId("content-scroll");
+        const scrollTop = scroller.scrollTop;
+        const scrollHeight = scroller.scrollHeight;
+        const clientHeight = scroller.clientHeight;
+        
+        // Calculate scroll percentage
+        const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+        const progressPercent = Math.min(scrollPercentage * 100, 100);
+        
+        // Update reading progress bar
+        const progressBar = byId("reading-progress");
+        if (state.page === "reader") {
+          progressBar.style.width = progressPercent + "%";
+          progressBar.classList.add("visible");
+        } else {
+          progressBar.classList.remove("visible");
+        }
+        
+        // Mark as read when user reaches 95% of the content
+        if (scrollPercentage >= 0.95) {
+          markChapterAsRead(state.chapterUrl);
+        }
+      }
+
       function saveScrollProgress() {
         if (!state.book || !state.chapterUrl) return;
         const scroller = byId("content-scroll");
@@ -948,6 +999,7 @@
           attachScrollSaver.ticking = true;
           requestAnimationFrame(() => {
             saveScrollProgress();
+            checkIfChapterCompleted(); // Check if chapter is complete on scroll
             attachScrollSaver.ticking = false;
           });
         };
@@ -1014,11 +1066,15 @@
           observeHeadings(headings, toc);
           showView("reader");
           setCanonical(url);
-          // mark read + restore progress
-          markChapterAsRead(url);
+          // restore progress - don't auto-mark as read anymore
           await sleep(10);
           restoreScrollProgress();
           attachScrollSaver();
+          
+          // Check if already at the end after restoring scroll position
+          setTimeout(() => {
+            checkIfChapterCompleted();
+          }, 100);
           
           // Close sidebar on mobile after chapter selection
           closeSidebarOnMobile();
