@@ -109,6 +109,31 @@
         max-width: 1200px;
         margin: 0 auto;
         padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .hamburger {
+        display: none;
+      }
+      @media (max-width: 900px) {
+        .container {
+          flex-wrap: wrap;
+        }
+        .hamburger {
+          display: inline-grid;
+        }
+        .load-row {
+          order: 3;
+          width: 100%;
+          margin-top: 12px;
+        }
       }
       .brand {
         display: flex;
@@ -286,27 +311,19 @@
         border-color: hsl(var(--accent));
         box-shadow: 0 10px 22px hsl(var(--accent) / 0.22);
       }
+      .btn-icon svg {
+        width: 18px;
+        height: 18px;
+      }
 
       /* Reader layout */
       .reader {
         display: grid;
         grid-template-columns: 320px 1fr;
         height: 100%;
+        position: relative;
       }
-      @media (max-width: 900px) {
-        .reader {
-          grid-template-columns: 1fr;
-        }
-        .sidebar {
-          position: relative;
-          height: auto;
-          max-height: 40vh;
-        }
-        .content {
-          height: calc(100% - 40vh);
-        }
-      }
-
+      
       .sidebar {
         border-right: 1px solid hsl(var(--border));
         background: linear-gradient(
@@ -315,6 +332,34 @@
           hsl(var(--card) / 0.9)
         );
         overflow: auto;
+        transition: transform var(--transition);
+      }
+      
+      @media (max-width: 900px) {
+        .reader {
+          grid-template-columns: 1fr;
+        }
+        .sidebar {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          z-index: 100;
+          transform: translateX(-100%);
+          border-right: none;
+          background: hsl(var(--bg) / 0.98);
+          backdrop-filter: blur(10px);
+        }
+        .sidebar.open {
+          transform: translateX(0);
+        }
+        .sidebar .s-inner {
+          padding: 100px 20px 20px;
+        }
+        .content {
+          height: 100%;
+        }
       }
       .sidebar .s-inner {
         padding: 16px;
@@ -487,9 +532,18 @@
     <div class="app-shell" id="app">
       <header class="site-header">
         <div class="container">
-          <div class="brand" aria-label="GitBook Reader">
-            <div class="brand-badge" aria-hidden="true"></div>
-            <h1>GitBook Reader</h1>
+          <div class="header-left">
+            <button id="sidebar-toggle" class="btn-icon hamburger" aria-label="Alternar menu" aria-expanded="false">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+            <div class="brand" aria-label="GitBook Reader">
+              <div class="brand-badge" aria-hidden="true"></div>
+              <h1>GitBook Reader</h1>
+            </div>
           </div>
           <div class="load-row" role="search">
             <input
@@ -821,6 +875,8 @@
               top: h.offsetTop - 12,
               behavior: "smooth",
             });
+            // Close sidebar on mobile after TOC navigation
+            closeSidebarOnMobile();
           });
           toc.appendChild(a);
         });
@@ -963,6 +1019,9 @@
           await sleep(10);
           restoreScrollProgress();
           attachScrollSaver();
+          
+          // Close sidebar on mobile after chapter selection
+          closeSidebarOnMobile();
         } catch (e) {
           byId("article").innerHTML = `<div class="error">${
             (e && e.message) || "Erro ao abrir capítulo"
@@ -1037,6 +1096,55 @@
         if (confirm("Tem certeza que deseja apagar todo o histórico?")) {
           writeHistory([]);
           renderHistory();
+        }
+      });
+
+      // Sidebar toggle functionality
+      let sidebarOpen = false;
+      
+      function toggleSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        const toggleBtn = byId('sidebar-toggle');
+        
+        sidebarOpen = !sidebarOpen;
+        
+        if (sidebarOpen) {
+          sidebar.classList.add('open');
+          toggleBtn.setAttribute('aria-expanded', 'true');
+        } else {
+          sidebar.classList.remove('open');
+          toggleBtn.setAttribute('aria-expanded', 'false');
+        }
+      }
+      
+      function closeSidebarOnMobile() {
+        if (window.innerWidth <= 900 && sidebarOpen) {
+          toggleSidebar();
+        }
+      }
+      
+      // Event listeners for sidebar
+      byId("sidebar-toggle").addEventListener("click", toggleSidebar);
+      
+      // Close sidebar when clicking outside on mobile
+      document.addEventListener("click", (e) => {
+        const sidebar = document.querySelector('.sidebar');
+        const toggleBtn = byId('sidebar-toggle');
+        
+        if (window.innerWidth <= 900 && sidebarOpen && 
+            !sidebar.contains(e.target) && 
+            !toggleBtn.contains(e.target)) {
+          toggleSidebar();
+        }
+      });
+      
+      // Close sidebar on window resize if switching to desktop
+      window.addEventListener("resize", () => {
+        if (window.innerWidth > 900 && sidebarOpen) {
+          const sidebar = document.querySelector('.sidebar');
+          sidebar.classList.remove('open');
+          sidebarOpen = false;
+          byId('sidebar-toggle').setAttribute('aria-expanded', 'false');
         }
       });
 
