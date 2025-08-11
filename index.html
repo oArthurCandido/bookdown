@@ -524,6 +524,111 @@
         box-shadow: 0 8px 24px hsl(var(--accent) / 0.12);
       }
 
+      /* Chapter Navigation */
+      .chapter-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 48px;
+        padding-top: 24px;
+        border-top: 1px solid hsl(var(--border));
+        gap: 16px;
+      }
+      
+      .chapter-nav-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        background: hsl(var(--card));
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius-sm);
+        color: hsl(var(--text));
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 14px;
+        transition: all var(--transition);
+        cursor: pointer;
+        max-width: 280px;
+      }
+      
+      .chapter-nav-btn:hover {
+        border-color: hsl(var(--accent));
+        box-shadow: 0 4px 16px hsl(var(--accent) / 0.2);
+        transform: translateY(-1px);
+      }
+      
+      .chapter-nav-btn:active {
+        transform: translateY(0);
+      }
+      
+      .chapter-nav-btn.prev {
+        flex-direction: row;
+      }
+      
+      .chapter-nav-btn.next {
+        flex-direction: row-reverse;
+        text-align: right;
+      }
+      
+      .chapter-nav-btn .nav-icon {
+        width: 16px;
+        height: 16px;
+        opacity: 0.7;
+        transition: opacity var(--transition);
+      }
+      
+      .chapter-nav-btn:hover .nav-icon {
+        opacity: 1;
+      }
+      
+      .chapter-nav-btn .nav-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      
+      .chapter-nav-btn .nav-label {
+        font-size: 12px;
+        opacity: 0.7;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+      }
+      
+      .chapter-nav-btn .nav-title {
+        font-size: 14px;
+        line-height: 1.3;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      
+      @media (max-width: 600px) {
+        .chapter-nav {
+          flex-direction: column;
+          gap: 12px;
+        }
+        
+        .chapter-nav-btn {
+          width: 100%;
+          max-width: none;
+          justify-content: center;
+        }
+        
+        .chapter-nav-btn.next {
+          flex-direction: row;
+          text-align: left;
+        }
+        
+        .chapter-nav-btn .nav-title {
+          white-space: normal;
+          overflow: visible;
+          text-overflow: unset;
+        }
+      }
+
       .empty {
         color: hsl(var(--muted));
         padding: 16px;
@@ -1084,7 +1189,73 @@
         });
       }
 
-      async function openChapter(url) {
+      function createChapterNavigation() {
+        if (!state.book?.chapters || state.book.chapters.length <= 1) {
+          return null; // No navigation needed for single chapter books
+        }
+
+        const currentIndex = state.book.chapters.findIndex(ch => ch.url === state.chapterUrl);
+        if (currentIndex === -1) return null;
+
+        const navDiv = document.createElement("nav");
+        navDiv.className = "chapter-nav";
+        navDiv.setAttribute("aria-label", "Navegação entre capítulos");
+
+        // Previous chapter button
+        if (currentIndex > 0) {
+          const prevChapter = state.book.chapters[currentIndex - 1];
+          const prevBtn = document.createElement("button");
+          prevBtn.className = "chapter-nav-btn prev";
+          prevBtn.setAttribute("aria-label", `Capítulo anterior: ${prevChapter.title}`);
+          
+          prevBtn.innerHTML = `
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m15 18-6-6 6-6"/>
+            </svg>
+            <div class="nav-text">
+              <span class="nav-label">Anterior</span>
+              <span class="nav-title">${prevChapter.title}</span>
+            </div>
+          `;
+          
+          prevBtn.addEventListener("click", () => {
+            openChapter(prevChapter.url, true);
+          });
+          
+          navDiv.appendChild(prevBtn);
+        } else {
+          // Empty placeholder to maintain space-between layout
+          navDiv.appendChild(document.createElement("div"));
+        }
+
+        // Next chapter button
+        if (currentIndex < state.book.chapters.length - 1) {
+          const nextChapter = state.book.chapters[currentIndex + 1];
+          const nextBtn = document.createElement("button");
+          nextBtn.className = "chapter-nav-btn next";
+          nextBtn.setAttribute("aria-label", `Próximo capítulo: ${nextChapter.title}`);
+          
+          nextBtn.innerHTML = `
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m9 18 6-6-6-6"/>
+            </svg>
+            <div class="nav-text">
+              <span class="nav-label">Próximo</span>
+              <span class="nav-title">${nextChapter.title}</span>
+            </div>
+          `;
+          
+          nextBtn.addEventListener("click", () => {
+            openChapter(nextChapter.url, true);
+          });
+          
+          navDiv.appendChild(nextBtn);
+        }
+
+        return navDiv;
+      }
+
+      async function openChapter(url, startFromTop = false) {
         try {
           byId("loader").style.display = "block";
           state.chapterUrl = url;
@@ -1097,6 +1268,13 @@
           });
           article.innerHTML = html;
           rewriteResourceLinks(base, article);
+          
+          // Add chapter navigation at the end
+          const chapterNav = createChapterNavigation();
+          if (chapterNav) {
+            article.appendChild(chapterNav);
+          }
+          
           // Build inner TOC
           const { toc, headings } = buildInnerTOC(article);
           // Expand the corresponding TOC slot under the active chapter
@@ -1118,7 +1296,16 @@
           setCanonical(url);
           // restore progress - don't auto-mark as read anymore
           await sleep(10);
-          restoreScrollProgress();
+          
+          // Control scroll position based on navigation context
+          if (startFromTop) {
+            // Start from top when navigating via chapter buttons
+            byId("content-scroll").scrollTo({ top: 0, behavior: "smooth" });
+          } else {
+            // Restore saved position when opening from history or initial load
+            restoreScrollProgress();
+          }
+          
           attachScrollSaver();
           
           // Check if already at the end after restoring scroll position
@@ -1251,6 +1438,38 @@
           sidebar.classList.remove('open');
           sidebarOpen = false;
           byId('sidebar-toggle').setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      // Keyboard navigation for chapters
+      document.addEventListener("keydown", (e) => {
+        // Only handle navigation when in reader view and not typing in an input
+        if (state.page !== "reader" || 
+            e.target.tagName === "INPUT" || 
+            e.target.tagName === "TEXTAREA" ||
+            e.target.isContentEditable) {
+          return;
+        }
+
+        if (!state.book?.chapters || state.book.chapters.length <= 1) {
+          return;
+        }
+
+        const currentIndex = state.book.chapters.findIndex(ch => ch.url === state.chapterUrl);
+        if (currentIndex === -1) return;
+
+        // Left arrow - previous chapter
+        if (e.key === "ArrowLeft" && currentIndex > 0) {
+          e.preventDefault();
+          const prevChapter = state.book.chapters[currentIndex - 1];
+          openChapter(prevChapter.url, true);
+        }
+        
+        // Right arrow - next chapter
+        if (e.key === "ArrowRight" && currentIndex < state.book.chapters.length - 1) {
+          e.preventDefault();
+          const nextChapter = state.book.chapters[currentIndex + 1];
+          openChapter(nextChapter.url, true);
         }
       });
 
