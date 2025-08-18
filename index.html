@@ -97,9 +97,6 @@
         header.site-header.hidden {
           transform: translateY(-100%);
         }
-        .reading-mode header.site-header {
-          transform: translateY(-100%);
-        }
         .reading-mode .main-content {
           padding-top: 0;
         }
@@ -1117,6 +1114,8 @@
         const scroller = byId("content-scroll");
         const header = $("header.site-header");
         
+        // Ensure header starts visible
+        header.classList.remove("hidden");
         mobileReadingState.lastScrollY = scroller.scrollTop;
         
         const handleScroll = () => {
@@ -1145,6 +1144,18 @@
           mobileReadingState.lastScrollY = currentScrollY;
         };
         
+        // Add touch event to show navbar when tapping top area
+        const showHeaderOnTouch = (e) => {
+          if (e.clientY < 50) { // Top 50px of screen
+            header.classList.remove("hidden");
+          }
+        };
+        
+        document.addEventListener("touchstart", showHeaderOnTouch);
+        document.addEventListener("click", showHeaderOnTouch);
+        
+        mobileReadingState.touchHandler = showHeaderOnTouch;
+        
         scroller.addEventListener("scroll", handleScroll, { passive: true });
         mobileReadingState.scrollHandler = handleScroll;
       }
@@ -1154,6 +1165,12 @@
           const scroller = byId("content-scroll");
           scroller.removeEventListener("scroll", mobileReadingState.scrollHandler);
           mobileReadingState.scrollHandler = null;
+        }
+        
+        if (mobileReadingState.touchHandler) {
+          document.removeEventListener("touchstart", mobileReadingState.touchHandler);
+          document.removeEventListener("click", mobileReadingState.touchHandler);
+          mobileReadingState.touchHandler = null;
         }
         
         // Always show header when leaving reading mode
