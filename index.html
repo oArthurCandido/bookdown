@@ -109,7 +109,7 @@
         display: inline-grid;
       }
       @media (min-width: 768px) {
-        #sidebar-toggle {
+        .reading-mode #sidebar-toggle {
           display: none;
         }
       }
@@ -1175,9 +1175,11 @@
 
         // Mobile reading mode control
         const appShell = byId("app");
-        if (name === "reader" && mobileReadingState.isMobile()) {
+        if (name === "reader") {
           appShell.classList.add("reading-mode");
-          setupMobileScrollHandler();
+          if (mobileReadingState.isMobile()) {
+            setupMobileScrollHandler();
+          }
         } else {
           appShell.classList.remove("reading-mode");
           removeMobileScrollHandler();
@@ -1764,18 +1766,18 @@
       byId("exit-reading-btn").addEventListener("click", exitReadingMode);
 
       // Handle window resize for mobile reading mode
-      window.addEventListener("resize", () => {
-        if (state.page === "reader") {
-          const appShell = byId("app");
-          if (mobileReadingState.isMobile()) {
-            appShell.classList.add("reading-mode");
-            setupMobileScrollHandler();
-          } else {
-            appShell.classList.remove("reading-mode");
-            removeMobileScrollHandler();
-          }
-        }
-      });
+      // window.addEventListener("resize", () => {
+      //   if (state.page === "reader") {
+      //     const appShell = byId("app");
+      //     if (mobileReadingState.isMobile()) {
+      //       appShell.classList.add("reading-mode");
+      //       setupMobileScrollHandler();
+      //     } else {
+      //       appShell.classList.remove("reading-mode");
+      //       removeMobileScrollHandler();
+      //     }
+      //   }
+      // });
 
       // Sidebar toggle functionality
       let sidebarOpen = false;
