@@ -12,8 +12,9 @@
       content="Leitor de livros/documentos Markdown do GitHub com histórico, sumário, TOC interno e progresso salvo no navegador."
     />
     <link rel="canonical" href="" id="canonical-link" />
-    <meta name="theme-color" content="#F5F5DC" />
+    <meta name="theme-color" content="#0f172a" />
 
+    <!-- Open Graph -->
     <meta property="og:title" content="GitBook Reader" />
     <meta
       property="og:description"
@@ -21,8 +22,10 @@
     />
     <meta property="og:type" content="website" />
 
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
 
+    <!-- Structured Data -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -34,29 +37,27 @@
       }
     </script>
 
+    <!-- Marked.js -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <style>
-      /* --- ESTILO MODIFICADO: TEMA KINDLE/PAPEL --- */
       :root {
-        /* Paleta de cores sóbrias */
-        --bg: 45, 33%, 96%; /* Cor de papel (bege bem claro) */
-        --bg-soft: 45, 33%, 94%; /* Um tom ligeiramente mais escuro para painéis */
-        --text: 0, 0%, 15%; /* Cinza escuro para texto, não preto puro */
-        --muted: 0, 0%, 40%; /* Cinza médio para textos secundários */
-        --primary: 210, 25%, 35%; /* Azul acinzentado sóbrio para botões e links */
-        --primary-strong: 210, 25%, 30%;
-        --accent: 200, 30%, 50%; /* Um tom de destaque sutil */
-        --card: 45, 33%, 98%; /* Cor de fundo para cartões, quase branco */
-        --border: 0, 0%, 85%; /* Borda cinza clara */
-        --success: 140, 40%, 45%; /* Verde sóbrio */
-        --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        --radius: 10px;
-        --radius-sm: 8px;
-        --radius-xs: 6px;
+        --bg: 222 47% 8%;
+        --bg-soft: 222 44% 10.5%;
+        --text: 210 40% 96%;
+        --muted: 215 16% 65%;
+        --primary: 260 90% 66%;
+        --primary-strong: 260 90% 60%;
+        --accent: 200 85% 62%;
+        --card: 223 36% 12%;
+        --border: 223 24% 20%;
+        --success: 150 70% 45%;
+        --shadow: 0 10px 30px rgba(80, 70, 255, 0.25);
+        --radius: 14px;
+        --radius-sm: 10px;
+        --radius-xs: 8px;
         --transition: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
       }
-
       /* Base */
       html,
       body {
@@ -68,7 +69,7 @@
         color: hsl(var(--text));
         font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
           Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji",
-          "Segoe UI Emoji"; /* Fonte sem serifa para a UI */
+          "Segoe UI Emoji";
         line-height: 1.6;
         letter-spacing: 0.2px;
         overflow: hidden;
@@ -78,7 +79,17 @@
         min-height: 100vh;
         display: grid;
         grid-template-rows: auto 1fr;
-        background-color: hsl(var(--bg)); /* Fundo simples, sem gradientes */
+        background: radial-gradient(
+            1000px 600px at var(--mx, 50%) var(--my, 15%),
+            hsl(260 90% 20% / 0.35),
+            transparent 60%
+          ),
+          radial-gradient(
+            900px 500px at calc(var(--mx, 50%) + 20%) calc(var(--my, 15%) + 20%),
+            hsl(200 85% 18% / 0.25),
+            transparent 60%
+          ),
+          linear-gradient(180deg, hsl(var(--bg-soft)), hsl(var(--bg)) 50%);
       }
 
       /* Header */
@@ -86,8 +97,12 @@
         position: sticky;
         top: 0;
         z-index: 50;
-        backdrop-filter: saturate(100%) blur(8px);
-        background-color: hsla(var(--bg), 0.8); /* Fundo com transparência */
+        backdrop-filter: saturate(140%) blur(10px);
+        background: linear-gradient(
+          180deg,
+          hsl(var(--bg-soft) / 0.85),
+          transparent
+        );
         border-bottom: 1px solid hsl(var(--border));
       }
       .container {
@@ -131,8 +146,12 @@
         width: 28px;
         height: 28px;
         border-radius: 8px;
-        background: hsl(var(--primary));
-        box-shadow: none;
+        background: linear-gradient(
+          135deg,
+          hsl(var(--primary)),
+          hsl(var(--accent))
+        );
+        box-shadow: 0 6px 18px hsl(var(--primary) / 0.35);
       }
       .brand h1 {
         font-size: 18px;
@@ -149,7 +168,7 @@
         display: grid;
         grid-template-columns: 1fr auto;
         gap: 10px;
-        align-items: center; /* Alinhamento vertical */
+        margin-top: 12px;
       }
       .input {
         width: 100%;
@@ -163,15 +182,19 @@
         transition: box-shadow var(--transition), border-color var(--transition);
       }
       .input:focus {
-        box-shadow: 0 0 0 3px hsl(var(--primary) / 0.3);
-        border-color: hsl(var(--primary));
+        box-shadow: 0 0 0 3px hsl(var(--accent) / 0.3);
+        border-color: hsl(var(--accent));
       }
       .btn {
         height: 42px;
         padding: 0 16px;
         border-radius: var(--radius-sm);
-        border: 1px solid transparent;
-        background: hsl(var(--primary));
+        border: 1px solid hsl(var(--border));
+        background: linear-gradient(
+          135deg,
+          hsl(var(--primary)),
+          hsl(var(--accent))
+        );
         color: white;
         font-weight: 600;
         letter-spacing: 0.2px;
@@ -182,7 +205,7 @@
       }
       .btn:hover {
         transform: translateY(-1px);
-        filter: brightness(1.08);
+        filter: brightness(1.05);
       }
       .btn:active {
         transform: translateY(0);
@@ -192,11 +215,10 @@
         background: hsl(var(--card));
         color: hsl(var(--text));
         box-shadow: none;
-        border: 1px solid hsl(var(--border));
       }
       .btn.secondary:hover {
-        border-color: hsl(var(--primary));
-        background: hsl(var(--bg-soft));
+        border-color: hsl(var(--accent));
+        box-shadow: 0 8px 24px hsl(var(--accent) / 0.18);
       }
 
       /* Views */
@@ -218,7 +240,11 @@
       .panel {
         border: 1px solid hsl(var(--border));
         border-radius: var(--radius);
-        background: hsl(var(--bg-soft));
+        background: linear-gradient(
+          180deg,
+          hsl(var(--card) / 0.95),
+          hsl(var(--card) / 0.9)
+        );
       }
       .panel-header {
         padding: 16px 18px;
@@ -252,12 +278,12 @@
         padding: 12px;
         border: 1px solid hsl(var(--border));
         border-radius: var(--radius-sm);
-        background: hsl(var(--card));
+        background: hsl(var(--bg) / 0.35);
         transition: background var(--transition), border-color var(--transition);
       }
       .history-item:hover {
-        background: hsl(var(--primary) / 0.05);
-        border-color: hsl(var(--primary) / 0.6);
+        background: hsl(var(--accent) / 0.08);
+        border-color: hsl(var(--accent) / 0.6);
       }
       .history-title {
         font-size: 15px;
@@ -281,9 +307,9 @@
         transition: var(--transition);
       }
       .btn-icon:hover {
-        color: hsl(var(--text));
-        border-color: hsl(var(--primary));
-        background: hsl(var(--bg-soft));
+        color: #fff;
+        border-color: hsl(var(--accent));
+        box-shadow: 0 10px 22px hsl(var(--accent) / 0.22);
       }
       .btn-icon svg {
         width: 18px;
@@ -300,7 +326,11 @@
       
       .sidebar {
         border-right: 1px solid hsl(var(--border));
-        background: hsl(var(--bg-soft));
+        background: linear-gradient(
+          180deg,
+          hsl(var(--card) / 0.95),
+          hsl(var(--card) / 0.9)
+        );
         overflow: auto;
         transition: transform var(--transition);
       }
@@ -350,7 +380,7 @@
       .nav-item {
         border: 1px solid hsl(var(--border));
         border-radius: var(--radius-sm);
-        background: hsl(var(--card));
+        background: hsl(var(--bg) / 0.35);
       }
       .chapter-btn {
         display: flex;
@@ -368,7 +398,7 @@
           transform var(--transition);
       }
       .chapter-btn:hover {
-        background: hsl(var(--primary) / 0.08);
+        background: hsl(var(--accent) / 0.08);
       }
       .chapter-btn .dot {
         width: 10px;
@@ -404,19 +434,21 @@
         transition: background var(--transition), color var(--transition);
       }
       .toc a:hover {
-        color: hsl(var(--text));
-        background: hsl(var(--primary) / 0.12);
+        color: white;
+        background: hsl(var(--accent) / 0.12);
       }
       .toc a.active {
-        color: hsl(var(--primary-strong));
-        background: hsl(var(--primary) / 0.2);
-        font-weight: 600;
+        color: white;
+        background: linear-gradient(
+          135deg,
+          hsl(var(--primary) / 0.28),
+          hsl(var(--accent) / 0.24)
+        );
       }
 
       .content {
         position: relative;
         overflow: auto;
-        background-color: hsl(var(--bg));
       }
       
       /* Reading progress indicator */
@@ -426,7 +458,7 @@
         left: 0;
         width: 0%;
         height: 3px;
-        background: hsl(var(--primary));
+        background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)));
         z-index: 1000;
         transition: width 150ms ease;
         opacity: 0;
@@ -436,12 +468,9 @@
       }
       
       .article {
-        max-width: 800px; /* Um pouco mais estreito para melhor leitura */
+        max-width: 900px;
         margin: 0 auto;
         padding: 28px 26px 80px;
-        font-family: 'Georgia', 'Times New Roman', serif; /* Fonte serifada para leitura */
-        font-size: 18px; /* Tamanho de fonte maior */
-        line-height: 1.7; /* Espaçamento maior */
       }
       .article h1,
       .article h2,
@@ -449,8 +478,6 @@
       .article h4,
       .article h5 {
         scroll-margin-top: 20px;
-        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; /* Títulos em sans-serif para contraste */
-        font-weight: 700;
       }
       .article h1 {
         font-size: 32px;
@@ -460,45 +487,41 @@
       .article h2 {
         font-size: 24px;
         margin: 28px 0 10px;
-        border-bottom: 1px solid hsl(var(--border));
-        padding-bottom: 8px;
       }
       .article h3 {
         font-size: 20px;
         margin: 22px 0 8px;
+        color: hsl(var(--text));
       }
       .article p {
         color: hsl(var(--text));
         opacity: 0.95;
       }
       .article code {
-        background: hsl(var(--bg-soft));
+        background: hsl(var(--bg) / 0.6);
         padding: 2px 6px;
         border-radius: 6px;
         border: 1px solid hsl(var(--border));
-        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
-        font-size: 0.9em;
       }
       .article pre {
-        background: hsl(var(--bg-soft));
+        background: hsl(var(--bg) / 0.6);
         padding: 16px;
         border-radius: 10px;
         border: 1px solid hsl(var(--border));
         overflow: auto;
       }
       .article a {
-        color: hsl(var(--primary));
+        color: hsl(var(--accent));
         text-decoration: none;
-        border-bottom: 1px solid hsl(var(--primary) / 0.5);
       }
       .article a:hover {
-        background-color: hsl(var(--primary) / 0.1);
+        text-decoration: underline;
       }
       .article img {
         max-width: 100%;
         border-radius: 8px;
         border: 1px solid hsl(var(--border));
-        box-shadow: var(--shadow);
+        box-shadow: 0 8px 24px hsl(var(--accent) / 0.12);
       }
 
       /* Chapter Navigation */
@@ -510,7 +533,6 @@
         padding-top: 24px;
         border-top: 1px solid hsl(var(--border));
         gap: 16px;
-        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; /* UI em sans-serif */
       }
       
       .chapter-nav-btn {
@@ -531,8 +553,8 @@
       }
       
       .chapter-nav-btn:hover {
-        border-color: hsl(var(--primary));
-        box-shadow: var(--shadow);
+        border-color: hsl(var(--accent));
+        box-shadow: 0 4px 16px hsl(var(--accent) / 0.2);
         transform: translateY(-1px);
       }
       
@@ -613,13 +635,19 @@
         text-align: center;
       }
       .error {
-        color: #c84a4a;
+        color: #fca5a5;
         padding: 8px 12px;
-        border: 1px solid #e08f8f;
-        background: #fbebeb;
+        border: 1px solid #7f1d1d;
+        background: #450a0a;
         border-radius: 8px;
       }
 
+      /* Signature micro-interaction: ambient pointer light */
+      @media (prefers-reduced-motion: no-preference) {
+        body {
+          transition: background 600ms ease;
+        }
+      }
     </style>
   </head>
   <body>
@@ -657,6 +685,7 @@
       </header>
 
       <main>
+        <!-- Home View -->
         <section id="home-view" class="view" aria-label="Tela inicial">
           <div class="home-wrap container">
             <article class="panel" aria-labelledby="history-title">
@@ -676,6 +705,7 @@
           </div>
         </section>
 
+        <!-- Reader View -->
         <section id="reader-view" class="view" hidden aria-label="Leitor">
           <div class="reader">
             <aside class="sidebar" aria-label="Navegação do livro">
