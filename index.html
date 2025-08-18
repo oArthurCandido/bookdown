@@ -71,7 +71,7 @@
           "Segoe UI Emoji"; /* Fonte sem serifa para a UI */
         line-height: 1.6;
         letter-spacing: 0.2px;
-        overflow: hidden;
+        /* Removed overflow: hidden to allow scrolling on home page */
       }
       .app-shell {
         position: relative;
@@ -102,6 +102,18 @@
           padding-top: 0;
         }
       }
+      #sidebar-toggle {
+        display: none;
+      }
+      .reading-mode #sidebar-toggle {
+        display: inline-grid;
+      }
+      @media (min-width: 768px) {
+        #sidebar-toggle {
+          display: none;
+        }
+      }
+
       .container {
         max-width: 1200px;
         margin: 0 auto;
@@ -215,14 +227,12 @@
       }
 
       /* Exit Reading Mode Button */
-      .exit-reading-btn {
+      #exit-reading-btn {
         display: none;
       }
 
-      @media (max-width: 768px) {
-        .reading-mode .exit-reading-btn {
-          display: inline-grid;
-        }
+      .reading-mode #exit-reading-btn {
+        display: inline-grid;
       }
 
       /* Views */
@@ -278,7 +288,8 @@
         border: 1px solid hsl(var(--border));
         border-radius: var(--radius);
         background: hsl(var(--card));
-        transition: background var(--transition), border-color var(--transition), transform var(--transition);
+        transition: background var(--transition), border-color var(--transition),
+          transform var(--transition);
       }
       .history-item:hover {
         background: hsl(var(--primary) / 0.05);
@@ -299,7 +310,11 @@
         height: 260px;
         margin: 0 auto 16px;
         border-radius: var(--radius-sm);
-        background: linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.3));
+        background: linear-gradient(
+          135deg,
+          hsl(var(--primary) / 0.1),
+          hsl(var(--primary) / 0.3)
+        );
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1007,12 +1022,12 @@
         }
         return chapters;
       }
-      
+
       function extractBookInfoFromMarkdown(md, base) {
         const tokens = marked.lexer(md);
         let coverImage = null;
         let title = null;
-        
+
         // Extract title from first heading
         for (const t of tokens) {
           if (t.type === "heading" && t.depth === 1 && !title) {
@@ -1020,7 +1035,7 @@
             break;
           }
         }
-        
+
         // Extract cover image with improved detection
         // First try to find it in the raw markdown using regex
         const imgMatch = md.match(/<img[^>]+src\s*=\s*["']([^"']+)["'][^>]*>/i);
@@ -1028,7 +1043,7 @@
           const src = imgMatch[1];
           coverImage = resolveRelative(base, src);
         }
-        
+
         // If not found via regex, try token parsing
         if (!coverImage) {
           for (const t of tokens) {
@@ -1046,7 +1061,7 @@
                 }
               }
             }
-            
+
             // Also check for direct image tokens
             if (t.type === "image" && t.href) {
               coverImage = resolveRelative(base, t.href);
@@ -1054,7 +1069,7 @@
             }
           }
         }
-        
+
         return { title, coverImage };
       }
 
@@ -1078,7 +1093,7 @@
         for (const b of list) {
           const li = document.createElement("li");
           li.className = "history-item";
-          
+
           // Cover image or placeholder
           if (b.coverImage) {
             const img = document.createElement("img");
@@ -1086,7 +1101,7 @@
             img.src = b.coverImage;
             img.alt = `Capa do livro: ${b.title}`;
             img.loading = "lazy";
-            
+
             // Add error handling for failed image loads
             img.addEventListener("error", () => {
               // Replace with placeholder if image fails to load
@@ -1096,7 +1111,7 @@
               placeholder.title = "Erro ao carregar imagem de capa";
               img.parentNode.replaceChild(placeholder, img);
             });
-            
+
             li.appendChild(img);
           } else {
             const placeholder = document.createElement("div");
@@ -1105,40 +1120,40 @@
             placeholder.title = "Sem imagem de capa disponível";
             li.appendChild(placeholder);
           }
-          
+
           // Book info
           const title = document.createElement("h3");
           title.className = "history-title";
           title.textContent = b.title || "Sem título";
-          
+
           const meta = document.createElement("p");
           meta.className = "history-meta";
           meta.textContent = (b.chapters?.length || 1) + " capítulos";
-          
+
           // Actions
           const actions = document.createElement("div");
           actions.className = "book-actions";
-          
+
           const openBtn = document.createElement("button");
           openBtn.className = "btn secondary";
           openBtn.textContent = "Abrir Livro";
           openBtn.addEventListener("click", () => openBookFromHistory(b.id));
-          
+
           const delBtn = document.createElement("button");
           delBtn.className = "btn-icon";
           delBtn.title = "Remover livro";
           delBtn.setAttribute("aria-label", "Remover livro");
           delBtn.innerHTML = "✕";
           delBtn.addEventListener("click", () => {
-            if (confirm(`Remover "${b.title || 'este livro'}" do histórico?`)) {
+            if (confirm(`Remover "${b.title || "este livro"}" do histórico?`)) {
               removeBook(b.id);
               renderHistory();
             }
           });
-          
+
           actions.appendChild(openBtn);
           actions.appendChild(delBtn);
-          
+
           li.appendChild(title);
           li.appendChild(meta);
           li.appendChild(actions);
@@ -1672,17 +1687,17 @@
         try {
           // Load index markdown
           const md = await fetchText(rawIndex);
-          
+
           // Extract book information including cover image
           const bookInfo = extractBookInfoFromMarkdown(md, base);
-          
+
           // Determine title from extracted info or fallback to regex
           let title = bookInfo.title || "Livro";
           if (!bookInfo.title) {
             const m = md.match(/^\s*#\s+(.+)$/m);
             if (m) title = m[1].trim();
           }
-          
+
           const chapters = extractChaptersFromMarkdown(md, base);
           const isMulti = chapters.length > 0;
           const book = {
