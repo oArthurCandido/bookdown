@@ -75,7 +75,7 @@
       }
       .app-shell {
         position: relative;
-        min-height: 100vh;
+        min-height: 100svh;
         display: grid;
         grid-template-rows: auto 1fr;
         background-color: hsl(var(--bg)); /* Fundo simples, sem gradientes */
@@ -89,6 +89,20 @@
         backdrop-filter: saturate(100%) blur(8px);
         background-color: hsla(var(--bg), 0.8); /* Fundo com transparência */
         border-bottom: 1px solid hsl(var(--border));
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      
+      /* Header hidden on scroll (mobile only) */
+      @media (max-width: 768px) {
+        header.site-header.hidden {
+          transform: translateY(-100%);
+        }
+        .reading-mode header.site-header {
+          transform: translateY(-100%);
+        }
+        .reading-mode .main-content {
+          padding-top: 0;
+        }
       }
       .container {
         max-width: 1200px;
@@ -118,6 +132,9 @@
           order: 3;
           width: 100%;
           margin-top: 12px;
+        }
+        .reading-mode .load-row {
+          display: none;
         }
       }
       .brand {
@@ -198,10 +215,21 @@
         border-color: hsl(var(--primary));
         background: hsl(var(--bg-soft));
       }
+      
+      /* Exit Reading Mode Button */
+      .exit-reading-btn {
+        display: none;
+      }
+      
+      @media (max-width: 768px) {
+        .reading-mode .exit-reading-btn {
+          display: inline-grid;
+        }
+      }
 
       /* Views */
       main {
-        height: calc(100vh - 82px);
+        height: calc(100svh - 82px);
       }
       .view {
         height: 100%;
@@ -314,7 +342,7 @@
           top: 0;
           left: 0;
           width: 100vw;
-          height: 100vh;
+          height: 100svh;
           z-index: 100;
           transform: translateX(-100%);
           border-right: none;
@@ -635,6 +663,12 @@
                 <line x1="3" y1="18" x2="21" y2="18"></line>
               </svg>
             </button>
+            <button id="exit-reading-btn" class="btn-icon exit-reading-btn" aria-label="Sair do modo de leitura" title="Voltar à tela inicial">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
             <div class="brand" aria-label="GitBook Reader">
               <div class="brand-badge" aria-hidden="true"></div>
               <h1>GitBook Reader</h1>
@@ -725,6 +759,14 @@
         book: null, // { id, title, indexUrl, baseRaw, chapters: [ {title, url} ], lastChapterUrl, lastScroll, readChapters: [] }
         chapterUrl: null,
         observer: null,
+      };
+      
+      // Mobile reading mode state
+      let mobileReadingState = {
+        isScrolling: false,
+        lastScrollY: 0,
+        ticking: false,
+        isMobile: () => window.innerWidth <= 768
       };
 
       // History helpers
@@ -950,6 +992,16 @@
         if (name !== "reader") {
           progressBar.classList.remove("visible");
         }
+        
+        // Mobile reading mode control
+        const appShell = byId("app");
+        if (name === "reader" && mobileReadingState.isMobile()) {
+          appShell.classList.add("reading-mode");
+          setupMobileScrollHandler();
+        } else {
+          appShell.classList.remove("reading-mode");
+          removeMobileScrollHandler();
+        }
       }
 
       function setCanonical(url) {
@@ -1057,6 +1109,67 @@
         headings.forEach((h) => obs.observe(h));
         state.observer = obs;
       }
+      
+      // Mobile Reading Mode Functions
+      function setupMobileScrollHandler() {
+        if (!mobileReadingState.isMobile()) return;
+        
+        const scroller = byId("content-scroll");
+        const header = $("header.site-header");
+        
+        mobileReadingState.lastScrollY = scroller.scrollTop;
+        
+        const handleScroll = () => {
+          if (!mobileReadingState.ticking) {
+            requestAnimationFrame(() => {
+              updateHeaderVisibility();
+              mobileReadingState.ticking = false;
+            });
+            mobileReadingState.ticking = true;
+          }
+        };
+        
+        const updateHeaderVisibility = () => {
+          const currentScrollY = scroller.scrollTop;
+          const scrollDelta = currentScrollY - mobileReadingState.lastScrollY;
+          
+          // Hide header when scrolling down, show when scrolling up
+          if (scrollDelta > 10 && currentScrollY > 100) {
+            // Scrolling down - hide header
+            header.classList.add("hidden");
+          } else if (scrollDelta < -10) {
+            // Scrolling up - show header
+            header.classList.remove("hidden");
+          }
+          
+          mobileReadingState.lastScrollY = currentScrollY;
+        };
+        
+        scroller.addEventListener("scroll", handleScroll, { passive: true });
+        mobileReadingState.scrollHandler = handleScroll;
+      }
+      
+      function removeMobileScrollHandler() {
+        if (mobileReadingState.scrollHandler) {
+          const scroller = byId("content-scroll");
+          scroller.removeEventListener("scroll", mobileReadingState.scrollHandler);
+          mobileReadingState.scrollHandler = null;
+        }
+        
+        // Always show header when leaving reading mode
+        const header = $("header.site-header");
+        header.classList.remove("hidden");
+      }
+      
+      function exitReadingMode() {
+        showView("home");
+        
+        // Close sidebar if open
+        const sidebar = byId("sidebar");
+        const hamburger = byId("sidebar-toggle");
+        sidebar.classList.remove("open");
+        hamburger.setAttribute("aria-expanded", "false");
+      }
 
       function markChapterAsRead(url) {
         if (!state.book) return;
@@ -1148,7 +1261,12 @@
           title.textContent = ch.title;
           btn.appendChild(dot);
           btn.appendChild(title);
-          btn.addEventListener("click", () => openChapter(ch.url));
+          btn.addEventListener("click", () => {
+            // If chapter is already read, restore its scroll position
+            // If not read, start from top
+            const isRead = readSet.has(ch.url);
+            openChapter(ch.url, !isRead);
+          });
           li.appendChild(btn);
           // Inner TOC mount point (when active)
           const sub = document.createElement("div");
@@ -1359,6 +1477,23 @@
         if (confirm("Tem certeza que deseja apagar todo o histórico e progresso de leitura?")) {
           clearAllBooksData();
           renderHistory();
+        }
+      });
+      
+      // Exit reading mode button
+      byId("exit-reading-btn").addEventListener("click", exitReadingMode);
+      
+      // Handle window resize for mobile reading mode
+      window.addEventListener("resize", () => {
+        if (state.page === "reader") {
+          const appShell = byId("app");
+          if (mobileReadingState.isMobile()) {
+            appShell.classList.add("reading-mode");
+            setupMobileScrollHandler();
+          } else {
+            appShell.classList.remove("reading-mode");
+            removeMobileScrollHandler();
+          }
         }
       });
 
