@@ -91,11 +91,12 @@
         border-bottom: 1px solid hsl(var(--border));
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
-      
+
       /* Header hidden on scroll (mobile only) */
       @media (max-width: 768px) {
         header.site-header.hidden {
           transform: translateY(-100%);
+          display: none;
         }
         .reading-mode .main-content {
           padding-top: 0;
@@ -212,12 +213,12 @@
         border-color: hsl(var(--primary));
         background: hsl(var(--bg-soft));
       }
-      
+
       /* Exit Reading Mode Button */
       .exit-reading-btn {
         display: none;
       }
-      
+
       @media (max-width: 768px) {
         .reading-mode .exit-reading-btn {
           display: inline-grid;
@@ -226,7 +227,7 @@
 
       /* Views */
       main {
-        height: calc(100svh - 82px);
+        height: calc(100svh);
       }
       .view {
         height: 100%;
@@ -322,14 +323,14 @@
         height: 100%;
         position: relative;
       }
-      
+
       .sidebar {
         border-right: 1px solid hsl(var(--border));
         background: hsl(var(--bg-soft));
         overflow: auto;
         transition: transform var(--transition);
       }
-      
+
       @media (max-width: 900px) {
         .reader {
           grid-template-columns: 1fr;
@@ -396,20 +397,44 @@
         background: hsl(var(--primary) / 0.08);
       }
       .chapter-btn .dot {
-        width: 10px;
-        height: 10px;
+        width: 18px;
+        height: 18px;
         border-radius: 50%;
         background: hsl(var(--border));
         flex: 0 0 auto;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        border: 2px solid hsl(var(--border));
+        position: relative;
+      }
+      .chapter-btn .dot:hover {
+        transform: scale(1.1);
+        border-color: hsl(var(--primary));
       }
       .chapter-btn.read .dot {
         background: hsl(var(--success));
+        border-color: hsl(var(--success));
+        color: white;
+      }
+      .chapter-btn.read .dot::after {
+        content: "✓";
+        font-size: 10px;
       }
       .chapter-title {
         font-size: 14px;
         font-weight: 600;
         line-height: 1.3;
         letter-spacing: 0.2px;
+        cursor: pointer;
+        flex: 1;
+      }
+      .chapter-title:hover {
+        color: hsl(var(--primary));
       }
 
       .toc {
@@ -443,7 +468,7 @@
         overflow: auto;
         background-color: hsl(var(--bg));
       }
-      
+
       /* Reading progress indicator */
       .reading-progress {
         position: fixed;
@@ -459,12 +484,12 @@
       .reading-progress.visible {
         opacity: 1;
       }
-      
+
       .article {
         max-width: 800px; /* Um pouco mais estreito para melhor leitura */
         margin: 0 auto;
         padding: 28px 26px 80px;
-        font-family: 'Georgia', 'Times New Roman', serif; /* Fonte serifada para leitura */
+        font-family: "Georgia", "Times New Roman", serif; /* Fonte serifada para leitura */
         font-size: 18px; /* Tamanho de fonte maior */
         line-height: 1.7; /* Espaçamento maior */
       }
@@ -501,7 +526,8 @@
         padding: 2px 6px;
         border-radius: 6px;
         border: 1px solid hsl(var(--border));
-        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
+          Courier, monospace;
         font-size: 0.9em;
       }
       .article pre {
@@ -537,7 +563,7 @@
         gap: 16px;
         font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; /* UI em sans-serif */
       }
-      
+
       .chapter-nav-btn {
         display: flex;
         align-items: center;
@@ -554,44 +580,44 @@
         cursor: pointer;
         max-width: 280px;
       }
-      
+
       .chapter-nav-btn:hover {
         border-color: hsl(var(--primary));
         box-shadow: var(--shadow);
         transform: translateY(-1px);
       }
-      
+
       .chapter-nav-btn:active {
         transform: translateY(0);
       }
-      
+
       .chapter-nav-btn.prev {
         flex-direction: row;
       }
-      
+
       .chapter-nav-btn.next {
         flex-direction: row-reverse;
         text-align: right;
       }
-      
+
       .chapter-nav-btn .nav-icon {
         width: 16px;
         height: 16px;
         opacity: 0.7;
         transition: opacity var(--transition);
       }
-      
+
       .chapter-nav-btn:hover .nav-icon {
         opacity: 1;
       }
-      
+
       .chapter-nav-btn .nav-text {
         display: flex;
         flex-direction: column;
         gap: 2px;
         min-width: 0;
       }
-      
+
       .chapter-nav-btn .nav-label {
         font-size: 12px;
         opacity: 0.7;
@@ -599,7 +625,7 @@
         letter-spacing: 0.5px;
         font-weight: 600;
       }
-      
+
       .chapter-nav-btn .nav-title {
         font-size: 14px;
         line-height: 1.3;
@@ -607,24 +633,24 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      
+
       @media (max-width: 600px) {
         .chapter-nav {
           flex-direction: column;
           gap: 12px;
         }
-        
+
         .chapter-nav-btn {
           width: 100%;
           max-width: none;
           justify-content: center;
         }
-        
+
         .chapter-nav-btn.next {
           flex-direction: row;
           text-align: left;
         }
-        
+
         .chapter-nav-btn .nav-title {
           white-space: normal;
           overflow: visible;
@@ -644,7 +670,6 @@
         background: #fbebeb;
         border-radius: 8px;
       }
-
     </style>
   </head>
   <body>
@@ -653,15 +678,43 @@
       <header class="site-header">
         <div class="container">
           <div class="header-left">
-            <button id="sidebar-toggle" class="btn-icon hamburger" aria-label="Alternar menu" aria-expanded="false">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button
+              id="sidebar-toggle"
+              class="btn-icon hamburger"
+              aria-label="Alternar menu"
+              aria-expanded="false"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
               </svg>
             </button>
-            <button id="exit-reading-btn" class="btn-icon exit-reading-btn" aria-label="Sair do modo de leitura" title="Voltar à tela inicial">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button
+              id="exit-reading-btn"
+              class="btn-icon exit-reading-btn"
+              aria-label="Sair do modo de leitura"
+              title="Voltar à tela inicial"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
@@ -757,13 +810,13 @@
         chapterUrl: null,
         observer: null,
       };
-      
+
       // Mobile reading mode state
       let mobileReadingState = {
         isScrolling: false,
         lastScrollY: 0,
         ticking: false,
-        isMobile: () => window.innerWidth <= 768
+        isMobile: () => window.innerWidth <= 768,
       };
 
       // History helpers
@@ -797,54 +850,54 @@
       }
       function removeBook(id) {
         // First, get the book to remove its related data
-        const book = readHistory().find(b => b.id === id);
+        const book = readHistory().find((b) => b.id === id);
         if (book) {
           clearBookRelatedData(book);
         }
         writeHistory(readHistory().filter((b) => b.id !== id));
       }
-      
+
       function clearBookRelatedData(book) {
         // Remove all progress keys for this book's chapters
         if (book.chapters && book.baseRaw) {
-          book.chapters.forEach(chapter => {
+          book.chapters.forEach((chapter) => {
             const key = progressKey(book.baseRaw, chapter.url);
             localStorage.removeItem(key);
           });
         }
-        
+
         // Also try to remove progress for the main index URL if it exists
         if (book.indexUrl && book.baseRaw) {
           const indexKey = progressKey(book.baseRaw, book.indexUrl);
           localStorage.removeItem(indexKey);
         }
-        
+
         // Remove any other book-related keys that might exist
         const bookId = encodeURIComponent(book.id);
-        const bookBase = book.baseRaw ? encodeURIComponent(book.baseRaw) : '';
-        
+        const bookBase = book.baseRaw ? encodeURIComponent(book.baseRaw) : "";
+
         // Iterate through localStorage to find and remove related keys
         const keysToRemove = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
-          if (key && (
-            key.includes(bookId) || 
-            (bookBase && key.includes(bookBase))
-          )) {
+          if (
+            key &&
+            (key.includes(bookId) || (bookBase && key.includes(bookBase)))
+          ) {
             keysToRemove.push(key);
           }
         }
-        
-        keysToRemove.forEach(key => localStorage.removeItem(key));
+
+        keysToRemove.forEach((key) => localStorage.removeItem(key));
       }
-      
+
       function clearAllBooksData() {
         // Get all books before clearing
         const books = readHistory();
-        
+
         // Clear data for each book
-        books.forEach(book => clearBookRelatedData(book));
-        
+        books.forEach((book) => clearBookRelatedData(book));
+
         // Clear the history
         writeHistory([]);
       }
@@ -983,13 +1036,13 @@
         state.page = name;
         byId("home-view").hidden = name !== "home";
         byId("reader-view").hidden = name !== "reader";
-        
+
         // Hide progress bar when not in reader
         const progressBar = byId("reading-progress");
         if (name !== "reader") {
           progressBar.classList.remove("visible");
         }
-        
+
         // Mobile reading mode control
         const appShell = byId("app");
         if (name === "reader" && mobileReadingState.isMobile()) {
@@ -1106,18 +1159,18 @@
         headings.forEach((h) => obs.observe(h));
         state.observer = obs;
       }
-      
+
       // Mobile Reading Mode Functions
       function setupMobileScrollHandler() {
         if (!mobileReadingState.isMobile()) return;
-        
+
         const scroller = byId("content-scroll");
         const header = $("header.site-header");
-        
+
         // Ensure header starts visible
         header.classList.remove("hidden");
         mobileReadingState.lastScrollY = scroller.scrollTop;
-        
+
         const handleScroll = () => {
           if (!mobileReadingState.ticking) {
             requestAnimationFrame(() => {
@@ -1127,11 +1180,11 @@
             mobileReadingState.ticking = true;
           }
         };
-        
+
         const updateHeaderVisibility = () => {
           const currentScrollY = scroller.scrollTop;
           const scrollDelta = currentScrollY - mobileReadingState.lastScrollY;
-          
+
           // Hide header when scrolling down, show when scrolling up
           if (scrollDelta > 10 && currentScrollY > 100) {
             // Scrolling down - hide header
@@ -1140,47 +1193,57 @@
             // Scrolling up - show header
             header.classList.remove("hidden");
           }
-          
+
           mobileReadingState.lastScrollY = currentScrollY;
         };
-        
+
         // Add touch event to show navbar when tapping top area
         const showHeaderOnTouch = (e) => {
-          if (e.clientY < 50) { // Top 50px of screen
+          if (e.clientY < 50) {
+            // Top 50px of screen
             header.classList.remove("hidden");
           }
         };
-        
+
         document.addEventListener("touchstart", showHeaderOnTouch);
         document.addEventListener("click", showHeaderOnTouch);
-        
+
         mobileReadingState.touchHandler = showHeaderOnTouch;
-        
+
         scroller.addEventListener("scroll", handleScroll, { passive: true });
         mobileReadingState.scrollHandler = handleScroll;
       }
-      
+
       function removeMobileScrollHandler() {
         if (mobileReadingState.scrollHandler) {
           const scroller = byId("content-scroll");
-          scroller.removeEventListener("scroll", mobileReadingState.scrollHandler);
+          scroller.removeEventListener(
+            "scroll",
+            mobileReadingState.scrollHandler
+          );
           mobileReadingState.scrollHandler = null;
         }
-        
+
         if (mobileReadingState.touchHandler) {
-          document.removeEventListener("touchstart", mobileReadingState.touchHandler);
-          document.removeEventListener("click", mobileReadingState.touchHandler);
+          document.removeEventListener(
+            "touchstart",
+            mobileReadingState.touchHandler
+          );
+          document.removeEventListener(
+            "click",
+            mobileReadingState.touchHandler
+          );
           mobileReadingState.touchHandler = null;
         }
-        
+
         // Always show header when leaving reading mode
         const header = $("header.site-header");
         header.classList.remove("hidden");
       }
-      
+
       function exitReadingMode() {
         showView("home");
-        
+
         // Close sidebar if open
         const sidebar = byId("sidebar");
         const hamburger = byId("sidebar-toggle");
@@ -1199,18 +1262,37 @@
         }
       }
 
+      function toggleChapterReadStatus(url) {
+        if (!state.book) return;
+        const set = new Set(state.book.readChapters || []);
+
+        if (set.has(url)) {
+          // Unmark as read
+          set.delete(url);
+        } else {
+          // Mark as read
+          set.add(url);
+        }
+
+        state.book.readChapters = Array.from(set);
+        upsertBook(state.book);
+        renderBookTOC();
+
+        return !set.has(url); // Return new read status
+      }
+
       function checkIfChapterCompleted() {
         if (!state.chapterUrl) return;
-        
+
         const scroller = byId("content-scroll");
         const scrollTop = scroller.scrollTop;
         const scrollHeight = scroller.scrollHeight;
         const clientHeight = scroller.clientHeight;
-        
+
         // Calculate scroll percentage
         const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
         const progressPercent = Math.min(scrollPercentage * 100, 100);
-        
+
         // Update reading progress bar
         const progressBar = byId("reading-progress");
         if (state.page === "reader") {
@@ -1219,7 +1301,7 @@
         } else {
           progressBar.classList.remove("visible");
         }
-        
+
         // Mark as read when user reaches 95% of the content
         if (scrollPercentage >= 0.95) {
           markChapterAsRead(state.chapterUrl);
@@ -1271,19 +1353,50 @@
           const btn = document.createElement("button");
           btn.className = "chapter-btn";
           if (readSet.has(ch.url)) btn.classList.add("read");
-          const dot = document.createElement("span");
+
+          const dot = document.createElement("button");
           dot.className = "dot";
+          dot.setAttribute(
+            "aria-label",
+            readSet.has(ch.url) ? "Marcar como não lido" : "Marcar como lido"
+          );
+          dot.title = readSet.has(ch.url)
+            ? "Marcar como não lido"
+            : "Marcar como lido";
+
+          // Add click handler for toggle functionality
+          dot.addEventListener("click", (e) => {
+            e.stopPropagation(); // Prevent chapter opening
+            const wasRead = readSet.has(ch.url);
+            toggleChapterReadStatus(ch.url);
+            // Update the readSet for immediate UI feedback
+            if (wasRead) {
+              readSet.delete(ch.url);
+              btn.classList.remove("read");
+              dot.setAttribute("aria-label", "Marcar como lido");
+              dot.title = "Marcar como lido";
+            } else {
+              readSet.add(ch.url);
+              btn.classList.add("read");
+              dot.setAttribute("aria-label", "Marcar como não lido");
+              dot.title = "Marcar como não lido";
+            }
+          });
+
           const title = document.createElement("span");
           title.className = "chapter-title";
           title.textContent = ch.title;
           btn.appendChild(dot);
           btn.appendChild(title);
-          btn.addEventListener("click", () => {
+
+          // Add click handler to the title area (not the whole button to avoid conflict with dot)
+          title.addEventListener("click", () => {
             // If chapter is already read, restore its scroll position
             // If not read, start from top
             const isRead = readSet.has(ch.url);
             openChapter(ch.url, !isRead);
           });
+
           li.appendChild(btn);
           // Inner TOC mount point (when active)
           const sub = document.createElement("div");
@@ -1299,7 +1412,9 @@
           return null; // No navigation needed for single chapter books
         }
 
-        const currentIndex = state.book.chapters.findIndex(ch => ch.url === state.chapterUrl);
+        const currentIndex = state.book.chapters.findIndex(
+          (ch) => ch.url === state.chapterUrl
+        );
         if (currentIndex === -1) return null;
 
         const navDiv = document.createElement("nav");
@@ -1311,8 +1426,11 @@
           const prevChapter = state.book.chapters[currentIndex - 1];
           const prevBtn = document.createElement("button");
           prevBtn.className = "chapter-nav-btn prev";
-          prevBtn.setAttribute("aria-label", `Capítulo anterior: ${prevChapter.title}`);
-          
+          prevBtn.setAttribute(
+            "aria-label",
+            `Capítulo anterior: ${prevChapter.title}`
+          );
+
           prevBtn.innerHTML = `
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="m15 18-6-6 6-6"/>
@@ -1322,11 +1440,11 @@
               <span class="nav-title">${prevChapter.title}</span>
             </div>
           `;
-          
+
           prevBtn.addEventListener("click", () => {
             openChapter(prevChapter.url, true);
           });
-          
+
           navDiv.appendChild(prevBtn);
         } else {
           // Empty placeholder to maintain space-between layout
@@ -1338,8 +1456,11 @@
           const nextChapter = state.book.chapters[currentIndex + 1];
           const nextBtn = document.createElement("button");
           nextBtn.className = "chapter-nav-btn next";
-          nextBtn.setAttribute("aria-label", `Próximo capítulo: ${nextChapter.title}`);
-          
+          nextBtn.setAttribute(
+            "aria-label",
+            `Próximo capítulo: ${nextChapter.title}`
+          );
+
           nextBtn.innerHTML = `
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="m9 18 6-6-6-6"/>
@@ -1349,11 +1470,11 @@
               <span class="nav-title">${nextChapter.title}</span>
             </div>
           `;
-          
+
           nextBtn.addEventListener("click", () => {
             openChapter(nextChapter.url, true);
           });
-          
+
           navDiv.appendChild(nextBtn);
         }
 
@@ -1373,13 +1494,13 @@
           });
           article.innerHTML = html;
           rewriteResourceLinks(base, article);
-          
+
           // Add chapter navigation at the end
           const chapterNav = createChapterNavigation();
           if (chapterNav) {
             article.appendChild(chapterNav);
           }
-          
+
           // Build inner TOC
           const { toc, headings } = buildInnerTOC(article);
           // Expand the corresponding TOC slot under the active chapter
@@ -1401,7 +1522,7 @@
           setCanonical(url);
           // restore progress - don't auto-mark as read anymore
           await sleep(10);
-          
+
           // Control scroll position based on navigation context
           if (startFromTop) {
             // Start from top when navigating via chapter buttons
@@ -1410,14 +1531,14 @@
             // Restore saved position when opening from history or initial load
             restoreScrollProgress();
           }
-          
+
           attachScrollSaver();
-          
+
           // Check if already at the end after restoring scroll position
           setTimeout(() => {
             checkIfChapterCompleted();
           }, 100);
-          
+
           // Close sidebar on mobile after chapter selection
           closeSidebarOnMobile();
         } catch (e) {
@@ -1491,15 +1612,19 @@
         if (e.key === "Enter") byId("load-btn").click();
       });
       byId("clear-history").addEventListener("click", () => {
-        if (confirm("Tem certeza que deseja apagar todo o histórico e progresso de leitura?")) {
+        if (
+          confirm(
+            "Tem certeza que deseja apagar todo o histórico e progresso de leitura?"
+          )
+        ) {
           clearAllBooksData();
           renderHistory();
         }
       });
-      
+
       // Exit reading mode button
       byId("exit-reading-btn").addEventListener("click", exitReadingMode);
-      
+
       // Handle window resize for mobile reading mode
       window.addEventListener("resize", () => {
         if (state.page === "reader") {
@@ -1516,60 +1641,65 @@
 
       // Sidebar toggle functionality
       let sidebarOpen = false;
-      
+
       function toggleSidebar() {
-        const sidebar = document.querySelector('.sidebar');
-        const toggleBtn = byId('sidebar-toggle');
-        
+        const sidebar = document.querySelector(".sidebar");
+        const toggleBtn = byId("sidebar-toggle");
+
         sidebarOpen = !sidebarOpen;
-        
+
         if (sidebarOpen) {
-          sidebar.classList.add('open');
-          toggleBtn.setAttribute('aria-expanded', 'true');
+          sidebar.classList.add("open");
+          toggleBtn.setAttribute("aria-expanded", "true");
         } else {
-          sidebar.classList.remove('open');
-          toggleBtn.setAttribute('aria-expanded', 'false');
+          sidebar.classList.remove("open");
+          toggleBtn.setAttribute("aria-expanded", "false");
         }
       }
-      
+
       function closeSidebarOnMobile() {
         if (window.innerWidth <= 900 && sidebarOpen) {
           toggleSidebar();
         }
       }
-      
+
       // Event listeners for sidebar
       byId("sidebar-toggle").addEventListener("click", toggleSidebar);
-      
+
       // Close sidebar when clicking outside on mobile
       document.addEventListener("click", (e) => {
-        const sidebar = document.querySelector('.sidebar');
-        const toggleBtn = byId('sidebar-toggle');
-        
-        if (window.innerWidth <= 900 && sidebarOpen && 
-            !sidebar.contains(e.target) && 
-            !toggleBtn.contains(e.target)) {
+        const sidebar = document.querySelector(".sidebar");
+        const toggleBtn = byId("sidebar-toggle");
+
+        if (
+          window.innerWidth <= 900 &&
+          sidebarOpen &&
+          !sidebar.contains(e.target) &&
+          !toggleBtn.contains(e.target)
+        ) {
           toggleSidebar();
         }
       });
-      
+
       // Close sidebar on window resize if switching to desktop
       window.addEventListener("resize", () => {
         if (window.innerWidth > 900 && sidebarOpen) {
-          const sidebar = document.querySelector('.sidebar');
-          sidebar.classList.remove('open');
+          const sidebar = document.querySelector(".sidebar");
+          sidebar.classList.remove("open");
           sidebarOpen = false;
-          byId('sidebar-toggle').setAttribute('aria-expanded', 'false');
+          byId("sidebar-toggle").setAttribute("aria-expanded", "false");
         }
       });
 
       // Keyboard navigation for chapters
       document.addEventListener("keydown", (e) => {
         // Only handle navigation when in reader view and not typing in an input
-        if (state.page !== "reader" || 
-            e.target.tagName === "INPUT" || 
-            e.target.tagName === "TEXTAREA" ||
-            e.target.isContentEditable) {
+        if (
+          state.page !== "reader" ||
+          e.target.tagName === "INPUT" ||
+          e.target.tagName === "TEXTAREA" ||
+          e.target.isContentEditable
+        ) {
           return;
         }
 
@@ -1577,7 +1707,9 @@
           return;
         }
 
-        const currentIndex = state.book.chapters.findIndex(ch => ch.url === state.chapterUrl);
+        const currentIndex = state.book.chapters.findIndex(
+          (ch) => ch.url === state.chapterUrl
+        );
         if (currentIndex === -1) return;
 
         // Left arrow - previous chapter
@@ -1586,9 +1718,12 @@
           const prevChapter = state.book.chapters[currentIndex - 1];
           openChapter(prevChapter.url, true);
         }
-        
+
         // Right arrow - next chapter
-        if (e.key === "ArrowRight" && currentIndex < state.book.chapters.length - 1) {
+        if (
+          e.key === "ArrowRight" &&
+          currentIndex < state.book.chapters.length - 1
+        ) {
           e.preventDefault();
           const nextChapter = state.book.chapters[currentIndex + 1];
           openChapter(nextChapter.url, true);
