@@ -1056,11 +1056,11 @@
         // helper para scroll suave dentro do container reader
         function scrollToId(id) {
           const target = document.getElementById(id);
-          if (!target) return;
-          const readerRect = reader.getBoundingClientRect();
-          const targetRect = target.getBoundingClientRect();
-          const offset = targetRect.top - readerRect.top + reader.scrollTop - 8; // pequeno ajuste
-          reader.scrollTo({ top: offset, behavior: "smooth" });
+            if (!target) return;
+            const readerRect = reader.getBoundingClientRect();
+            const targetRect = target.getBoundingClientRect();
+            const offset = targetRect.top - readerRect.top + reader.scrollTop - 8; // pequeno ajuste
+            reader.scrollTo({ top: offset, behavior: 'smooth' });
         }
 
         function attachContentLinks() {
