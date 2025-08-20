@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1, maximum-scale=1"
     />
-    <title>GitBook Reader – Leitor de livros Markdown do GitHub</title>
+    <title>GitBook Reader - Leitor de livros Markdown do GitHub</title>
     <meta
       name="description"
       content="Leitor de livros/documentos Markdown do GitHub com histórico, sumário, TOC interno e progresso salvo no navegador."
@@ -1377,7 +1377,7 @@
         showView("home");
 
         // Close sidebar if open
-        const sidebar = document.querySelector('.sidebar');
+        const sidebar = document.querySelector(".sidebar");
         const hamburger = byId("sidebar-toggle");
         if (sidebar) {
           sidebar.classList.remove("open");
@@ -1620,20 +1620,20 @@
       async function openChapter(url, startFromTop = false) {
         try {
           byId("loader").style.display = "block";
-          
+
           // Save progress of current chapter before opening new one
           if (state.chapterUrl && state.chapterUrl !== url) {
             saveScrollProgress();
           }
-          
+
           state.chapterUrl = url;
-          
+
           // Update book's last chapter URL immediately
           if (state.book) {
             state.book.lastChapterUrl = url;
             upsertBook(state.book);
           }
-          
+
           const md = await fetchText(url);
           const article = byId("article");
           const base = baseOfRaw(url);
@@ -1652,23 +1652,23 @@
 
           // Build inner TOC
           const { toc, headings } = buildInnerTOC(article);
-          
+
           // Expand the corresponding TOC slot under the active chapter
           const idx = (state.book.chapters || []).findIndex(
             (c) => c.url === url
           );
-          
+
           if (idx >= 0) {
             const ul = byId("book-toc");
             // Hide all TOCs first
             $$(":scope > li .toc", ul).forEach(
               (t, i) => (t.style.display = i === idx ? "grid" : "none")
             );
-            
+
             // Find the correct mount point and insert TOC
             const host = $$(":scope > li", ul)[idx];
             const mount = host?.querySelector(".toc");
-            
+
             if (mount && toc.children.length > 0) {
               mount.innerHTML = "";
               mount.appendChild(toc);
@@ -1795,20 +1795,6 @@
 
       // Exit reading mode button
       byId("exit-reading-btn").addEventListener("click", exitReadingMode);
-
-      // Handle window resize for mobile reading mode
-      // window.addEventListener("resize", () => {
-      //   if (state.page === "reader") {
-      //     const appShell = byId("app");
-      //     if (mobileReadingState.isMobile()) {
-      //       appShell.classList.add("reading-mode");
-      //       setupMobileScrollHandler();
-      //     } else {
-      //       appShell.classList.remove("reading-mode");
-      //       removeMobileScrollHandler();
-      //     }
-      //   }
-      // });
 
       // Sidebar toggle functionality
       let sidebarOpen = false;
