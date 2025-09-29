@@ -843,15 +843,6 @@
       const byId = (id) => document.getElementById(id);
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-      // Signature ambient light following pointer
-      document.addEventListener("pointermove", (e) => {
-        const r = document.documentElement.style;
-        const x = (e.clientX / window.innerWidth) * 100;
-        const y = (e.clientY / window.innerHeight) * 100;
-        r.setProperty("--mx", x + "%");
-        r.setProperty("--my", y + "%");
-      });
-
       // Local Storage Keys
       const LS_HISTORY = "gbreader.history.v1";
       const progressKey = (bookBase, chapterUrl) =>
@@ -1108,6 +1099,11 @@
             img.src = b.coverImage;
             img.alt = `Capa do livro: ${b.title}`;
             img.loading = "lazy";
+            img.style.cursor = "pointer";
+            img.title = "Clique para abrir o livro";
+
+            // Add click handler to open book
+            img.addEventListener("click", () => openBookFromHistory(b.id));
 
             // Add error handling for failed image loads
             img.addEventListener("error", () => {
@@ -1116,6 +1112,10 @@
               placeholder.className = "book-cover-placeholder";
               placeholder.textContent = "📚";
               placeholder.title = "Erro ao carregar imagem de capa";
+              placeholder.style.cursor = "pointer";
+              placeholder.addEventListener("click", () =>
+                openBookFromHistory(b.id)
+              );
               img.parentNode.replaceChild(placeholder, img);
             });
 
@@ -1124,7 +1124,11 @@
             const placeholder = document.createElement("div");
             placeholder.className = "book-cover-placeholder";
             placeholder.textContent = "📚";
-            placeholder.title = "Sem imagem de capa disponível";
+            placeholder.title = "Clique para abrir o livro";
+            placeholder.style.cursor = "pointer";
+            placeholder.addEventListener("click", () =>
+              openBookFromHistory(b.id)
+            );
             li.appendChild(placeholder);
           }
 
@@ -1132,6 +1136,9 @@
           const title = document.createElement("h3");
           title.className = "history-title";
           title.textContent = b.title || "Sem título";
+          title.style.cursor = "pointer";
+          title.title = "Clique para abrir o livro";
+          title.addEventListener("click", () => openBookFromHistory(b.id));
 
           const meta = document.createElement("p");
           meta.className = "history-meta";
